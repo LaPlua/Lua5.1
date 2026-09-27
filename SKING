@@ -8,9 +8,6 @@ local LP = Players.LocalPlayer
 local SKING = {}
 SKING.__index = SKING
 
--- ============================================================
--- 图标系统
--- ============================================================
 local ICON_DATA_URL = "https://raw.githubusercontent.com/Footagesus/Icons/main/Main-v2.lua"
 
 local iconPackData = nil
@@ -56,9 +53,6 @@ function SKING:Icon(name)
     }
 end
 
--- ============================================================
--- 配色
--- ============================================================
 local C = {
     bg          = Color3.fromRGB(13, 13, 16),
     bgTop       = Color3.fromRGB(18, 18, 22),
@@ -106,7 +100,7 @@ local function stroke(p, col, th, trans)
 end
 
 -- ============================================================
--- Tab
+-- Tab 类
 -- ============================================================
 local Tab = {}
 Tab.__index = Tab
@@ -816,7 +810,7 @@ function SKING:Create(config)
     end)
     screenGui.Parent = ok and hui or CoreGui
 
-    -- ============ 悬浮窗 ============
+    -- 悬浮窗
     local floatBtn = n("TextButton", {
         Size = UDim2.fromOffset(220, 48),
         Position = UDim2.new(0.5, -110, 0, 18),
@@ -926,7 +920,7 @@ function SKING:Create(config)
         TweenService:Create(floatIconFrame, TweenInfo.new(0.2), { BackgroundColor3 = C.accent }):Play()
     end)
 
-    -- ============ 主界面 ============
+    -- 主界面
     local mainHolder = n("Frame", {
         BackgroundTransparency = 1,
         Size = UDim2.fromOffset(MAIN_W, MAIN_H),
@@ -949,21 +943,33 @@ function SKING:Create(config)
     })
     stroke(main, C.strokeOuter, 1, 0)
 
-    local flowStroke = n("UIStroke", {
+    -- ============ 流动光效（两层叠加，明显） ============
+    -- 底层：静态红色描边
+    local staticEdge = n("UIStroke", {
         Color = C.accent,
         Thickness = 1.5,
-        Transparency = 0.4,
+        Transparency = 0.5,
+        ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+        Parent = main,
+    })
+
+    -- 上层：粗的流动光带
+    local flowStroke = n("UIStroke", {
+        Color = C.accent,
+        Thickness = 3.5,
+        Transparency = 0.15,
         ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
         Parent = main,
     })
     local flowGradient = n("UIGradient", {
         Color = ColorSequence.new({
-            ColorSequenceKeypoint.new(0.00, Color3.fromRGB(40, 12, 12)),
-            ColorSequenceKeypoint.new(0.30, Color3.fromRGB(160, 35, 35)),
-            ColorSequenceKeypoint.new(0.45, Color3.fromRGB(255, 160, 160)),
-            ColorSequenceKeypoint.new(0.55, Color3.fromRGB(255, 160, 160)),
-            ColorSequenceKeypoint.new(0.70, Color3.fromRGB(160, 35, 35)),
-            ColorSequenceKeypoint.new(1.00, Color3.fromRGB(40, 12, 12)),
+            ColorSequenceKeypoint.new(0.00, Color3.fromRGB(30, 8, 8)),
+            ColorSequenceKeypoint.new(0.20, Color3.fromRGB(120, 25, 25)),
+            ColorSequenceKeypoint.new(0.40, Color3.fromRGB(255, 220, 220)),
+            ColorSequenceKeypoint.new(0.50, Color3.fromRGB(255, 90, 90)),
+            ColorSequenceKeypoint.new(0.60, Color3.fromRGB(255, 220, 220)),
+            ColorSequenceKeypoint.new(0.80, Color3.fromRGB(120, 25, 25)),
+            ColorSequenceKeypoint.new(1.00, Color3.fromRGB(30, 8, 8)),
         }),
         Rotation = 0,
         Parent = flowStroke,
@@ -971,11 +977,11 @@ function SKING:Create(config)
 
     local flowPhase = 0
     RunService.RenderStepped:Connect(function(dt)
-        flowPhase = (flowPhase + dt * 0.35) % 1
+        flowPhase = (flowPhase + dt * 0.5) % 1
         flowGradient.Offset = Vector2.new(flowPhase * 2 - 1, flowPhase * 2 - 1)
     end)
 
-    -- ============ 顶部栏 ============
+    -- 顶部栏
     local topbar = n("Frame", {
         BackgroundTransparency = 1,
         Size = UDim2.new(1, 0, 0, 66), Parent = main,
@@ -1078,7 +1084,7 @@ function SKING:Create(config)
         userName.Text = LP.DisplayName
     end)
 
-    -- ============ Body ============
+    -- Body
     local body = n("Frame", {
         BackgroundTransparency = 1,
         Size = UDim2.new(1, 0, 1, -67),
@@ -1101,6 +1107,7 @@ function SKING:Create(config)
         Size = UDim2.new(1, -48, 0, 36),
         Position = UDim2.new(0, 24, 0, 16), Parent = content,
     })
+    -- ★ 修复：补 FillDirection = Horizontal
     n("UIListLayout", {
         FillDirection = Enum.FillDirection.Horizontal,
         Padding = UDim.new(0, 6),
@@ -1109,7 +1116,7 @@ function SKING:Create(config)
         Parent = tabBarWrap,
     })
 
-    -- ============ Page + 双列布局（修复版：手动定位 + 动态高度） ============
+    -- Page（ScrollingFrame）
     local page = n("ScrollingFrame", {
         BackgroundTransparency = 1,
         Size = UDim2.new(1, -48, 1, -70),
@@ -1118,8 +1125,7 @@ function SKING:Create(config)
         ScrollBarThickness = 3,
         ScrollBarImageColor3 = C.track,
         ScrollBarImageTransparency = 0.3,
-        CanvasSize = UDim2.new(1, 0, 0, 0),
-        AutomaticCanvasSize = Enum.AutomaticSize.Y,
+        CanvasSize = UDim2.new(1, 0, 0, 2000),
         ScrollingDirection = Enum.ScrollingDirection.Y,
         Parent = content,
     })
@@ -1137,7 +1143,7 @@ function SKING:Create(config)
         AutomaticSize = Enum.AutomaticSize.Y,
         Parent = columnsWrap,
     })
-    n("UIListLayout", {
+    local leftLayout = n("UIListLayout", {
         Padding = UDim.new(0, 8),
         SortOrder = Enum.SortOrder.LayoutOrder,
         Parent = leftCol,
@@ -1150,23 +1156,24 @@ function SKING:Create(config)
         AutomaticSize = Enum.AutomaticSize.Y,
         Parent = columnsWrap,
     })
-    n("UIListLayout", {
+    local rightLayout = n("UIListLayout", {
         Padding = UDim.new(0, 8),
         SortOrder = Enum.SortOrder.LayoutOrder,
         Parent = rightCol,
     })
 
-    -- 动态同步 columnsWrap 高度到两列最大高度
+    -- ★ 修复：用 AbsoluteContentSize 做兜底高度源
     RunService.RenderStepped:Connect(function()
-        local lh = leftCol.AbsoluteSize.Y
-        local rh = rightCol.AbsoluteSize.Y
-        local h = math.max(lh, rh)
-        if math.abs(columnsWrap.AbsoluteSize.Y - h) > 0.5 then
-            columnsWrap.Size = UDim2.new(1, 0, 0, h)
+        local lh = math.max(leftCol.AbsoluteSize.Y, leftLayout.AbsoluteContentSize.Y)
+        local rh = math.max(rightCol.AbsoluteSize.Y, rightLayout.AbsoluteContentSize.Y)
+        local maxH = math.max(lh, rh)
+        if maxH > 0 then
+            columnsWrap.Size = UDim2.new(1, 0, 0, maxH)
+            page.CanvasSize = UDim2.new(1, 0, 0, maxH + 20)
         end
     end)
 
-    -- 下拉菜单 overlay
+    -- Overlay
     local overlay = n("Frame", {
         BackgroundTransparency = 1,
         Size = UDim2.fromScale(1, 1),
@@ -1180,7 +1187,6 @@ function SKING:Create(config)
         ZIndex = 99, Visible = false, Parent = main,
     })
 
-    -- 保存引用
     self._ScreenGui = screenGui
     self._FloatBtn = floatBtn
     self._FloatHint = floatHint
@@ -1311,7 +1317,6 @@ function Window:Tab(config)
         tabObj._SidebarBar = activeBar
         tabObj._SidebarIcon = iconImg
 
-        -- 图标包异步加载完回填
         task.spawn(function()
             local waited = 0
             while not iconsReady and waited < 8 do
