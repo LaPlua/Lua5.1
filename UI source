@@ -1,7 +1,3 @@
---源码由司空提供，盗卖4000+
---司空开源。6767
---加入群聊获取更多源码
---神秘数字 1108203505
 local builderSans, builderSansBold, tweenTo, getGlobal, bindFocusEffects, safeCall, rgbToHex, addCorner, addPadding, createLabel, ensureTable, roundToStep, formatNumber, resolveColor, colorToRgbTable, createTextContainer, fitTextSize, keyCodeToLabel, getCamera, normalizeKeyCode, userInputService, tweenService, players, coreGui, httpService, textService, runService, Library, Themes, Theme, FontSizes, getThemeColor, getGuiParent, createInstance, createButton, clearThemeGradient, isMobile, createSliderTrack
 
 userInputService = (game:GetService("UserInputService"))
