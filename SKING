@@ -1,3 +1,6 @@
+-- ============================================================
+-- SKING HUB UI Library
+-- ============================================================
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
@@ -8,51 +11,57 @@ local LP = Players.LocalPlayer
 local SKING = {}
 SKING.__index = SKING
 
-local ICON_DATA_URL = "https://raw.githubusercontent.com/Footagesus/Icons/main/Main-v2.lua"
+-- ============================================================
+-- 内置图标（Unicode 符号，用 Montserrat 渲染）
+-- ============================================================
+local ICON = {
+    eye        = "◉",
+    crosshair  = "◎",
+    user       = "▣",
+    settings   = "◈",
+    package    = "⬢",
+    sparkles   = "✦",
+    shield     = "❖",
+    info       = "◇",
+    ban        = "✚",
+    star       = "★",
+    heart      = "♥",
+    zap        = "⚡",
+    folder     = "▤",
+    search     = "◌",
+    play       = "▶",
+    arrow      = "→",
+    skull      = "☠",
+    palette    = "✿",
+    sword      = "†",
+    flame      = "▲",
+    circle     = "●",
+    square     = "■",
+    triangle   = "▲",
+    diamond    = "◆",
+    dot        = "•",
+    plus       = "+",
+    minus      = "−",
+    check      = "✓",
+    xmark      = "✕",
+    question   = "?",
+    money      = "$",
+    heart_fill = "♥",
+}
 
-local iconPackData = nil
-local iconsReady = false
-
-task.spawn(function()
-    local ok, result = pcall(function()
-        local src = game:HttpGet(ICON_DATA_URL)
-        local fn = loadstring(src)
-        if not fn then return nil end
-        return fn()
-    end)
-    if ok and result then
-        iconPackData = result
+function SKING:GetIcon(name)
+    if type(name) ~= "string" then return "?" end
+    -- 支持 pack:icon 格式，忽略 pack
+    local colon = name:find(":")
+    if colon then
+        name = name:sub(colon + 1)
     end
-    iconsReady = true
-end)
-
-local function parseIconString(str)
-    if type(str) ~= "string" then return nil, nil end
-    local colonPos = str:find(":")
-    if colonPos then
-        return str:sub(1, colonPos - 1), str:sub(colonPos + 1)
-    end
-    return nil, str
+    return ICON[name] or ICON.dot or "?"
 end
 
-function SKING:Icon(name)
-    if not iconPackData or not name then
-        return { Image = "", ImageRectSize = Vector2.new(0, 0), ImageRectOffset = Vector2.new(0, 0) }
-    end
-    local packName, iconName = parseIconString(name)
-    packName = packName or self.IconsPack or "lucide"
-    local pack = iconPackData.Icons and iconPackData.Icons[packName]
-    if not pack or not pack.Icons or not pack.Icons[iconName] then
-        return { Image = "", ImageRectSize = Vector2.new(0, 0), ImageRectOffset = Vector2.new(0, 0) }
-    end
-    local data = pack.Icons[iconName]
-    return {
-        Image = data.Image or "",
-        ImageRectSize = data.ImageRectSize or Vector2.new(0, 0),
-        ImageRectOffset = data.ImageRectPosition or Vector2.new(0, 0),
-    }
-end
-
+-- ============================================================
+-- 配色
+-- ============================================================
 local C = {
     bg          = Color3.fromRGB(13, 13, 16),
     bgTop       = Color3.fromRGB(18, 18, 22),
@@ -77,7 +86,6 @@ local C = {
     floatTop    = Color3.fromRGB(28, 28, 34),
     floatBottom = Color3.fromRGB(16, 16, 20),
 }
-
 SKING.Colors = C
 
 local function n(cls, props, children)
@@ -189,14 +197,14 @@ function Tab:Toggle(config)
     corner(track, trackH / 2)
     stroke(track, Color3.fromRGB(0, 0, 0), 1, 0.7)
 
-    n("Frame", {
+    local hl = n("Frame", {
         BackgroundColor3 = Color3.fromRGB(255, 255, 255),
         BackgroundTransparency = 0.92,
         Size = UDim2.new(1, -4, 0, trackH / 2 - 2),
         Position = UDim2.new(0, 2, 0, 2),
         BorderSizePixel = 0, Parent = track,
-    }).Name = "Highlight"
-    corner(track.Highlight, trackH / 4 - 1)
+    })
+    corner(hl, trackH / 4 - 1)
 
     local knobShadow = n("Frame", {
         BackgroundColor3 = Color3.fromRGB(0, 0, 0),
@@ -264,62 +272,67 @@ function Tab:Slider(config)
     local value = config.Default or 0
     local minV, maxV = config.Min or 0, config.Max or 100
 
+    -- 卡片加高，容纳竖直布局
     local card = n("Frame", {
         BackgroundColor3 = C.card,
-        Size = UDim2.new(1, 0, 0, 80),
+        Size = UDim2.new(1, 0, 0, 92),
         BorderSizePixel = 0, LayoutOrder = order, Parent = parent,
     })
     corner(card, 11)
     stroke(card, Color3.fromRGB(34, 34, 42), 1, 0.5)
 
+    -- 标题（左上）
     n("TextLabel", {
         BackgroundTransparency = 1,
-        Size = UDim2.new(1, -140, 0, 18),
-        Position = UDim2.new(0, 16, 0, 13),
+        Size = UDim2.new(1, -90, 0, 16),
+        Position = UDim2.new(0, 16, 0, 12),
         Text = config.Title or "", TextColor3 = C.text,
         TextSize = 12.5, Font = Enum.Font.Montserrat,
         TextXAlignment = Enum.TextXAlignment.Left, Parent = card,
     })
-    n("TextLabel", {
-        BackgroundTransparency = 1,
-        Size = UDim2.new(1, -140, 0, 18),
-        Position = UDim2.new(0, 16, 0, 32),
-        Text = config.Desc or "", TextColor3 = C.textDesc,
-        TextSize = 10.5, Font = Enum.Font.Montserrat,
-        TextXAlignment = Enum.TextXAlignment.Left,
-        TextYAlignment = Enum.TextYAlignment.Top, Parent = card,
-    })
 
+    -- 数字（右上，不重叠滑块）
     local valueLabel = n("TextLabel", {
         BackgroundTransparency = 1,
-        Size = UDim2.fromOffset(46, 18),
-        Position = UDim2.new(1, -226, 0.5, -9),
+        Size = UDim2.fromOffset(70, 16),
+        Position = UDim2.new(1, -86, 0, 12),
         Text = string.format("%.1f", value),
-        TextColor3 = C.text, TextSize = 12,
+        TextColor3 = C.accent, TextSize = 12.5,
         Font = Enum.Font.Montserrat,
         TextXAlignment = Enum.TextXAlignment.Right,
         Parent = card,
     })
 
-    local sliderW = 170
-    local trackH = 12
+    -- 描述
+    n("TextLabel", {
+        BackgroundTransparency = 1,
+        Size = UDim2.new(1, -32, 0, 16),
+        Position = UDim2.new(0, 16, 0, 30),
+        Text = config.Desc or "", TextColor3 = C.textDesc,
+        TextSize = 10.5, Font = Enum.Font.Montserrat,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        TextYAlignment = Enum.TextYAlignment.Top,
+        TextWrapped = true, Parent = card,
+    })
 
+    -- 滑块：横跨整个卡片宽度
+    local trackH = 12
     local slider = n("Frame", {
         BackgroundColor3 = C.track,
-        Size = UDim2.fromOffset(sliderW, trackH),
-        Position = UDim2.new(1, -186, 0.5, -trackH / 2),
+        Size = UDim2.new(1, -32, 0, trackH),
+        Position = UDim2.new(0, 16, 0, 62),
         BorderSizePixel = 0, Parent = card,
     })
     corner(slider, trackH / 2)
 
-    n("Frame", {
+    local topHl = n("Frame", {
         BackgroundColor3 = Color3.fromRGB(0, 0, 0),
         BackgroundTransparency = 0.7,
         Size = UDim2.new(1, -4, 0, trackH / 2 - 2),
         Position = UDim2.new(0, 2, 0, 2),
         BorderSizePixel = 0, Parent = slider,
-    }).Name = "TopHighlight"
-    corner(slider.TopHighlight, trackH / 4 - 1)
+    })
+    corner(topHl, trackH / 4 - 1)
 
     local function pct()
         return (value - minV) / (maxV - minV)
@@ -792,7 +805,6 @@ setmetatable(Window, { __index = SKING })
 function SKING:Create(config)
     config = config or {}
     local self = setmetatable({}, Window)
-    self.IconsPack = config.IconsPack or "lucide"
     self.Config = config
 
     local MAIN_W = config.Width or 960
@@ -943,32 +955,22 @@ function SKING:Create(config)
     })
     stroke(main, C.strokeOuter, 1, 0)
 
-    -- ============ 流动光效（两层叠加，明显） ============
-    -- 底层：静态红色描边
-    local staticEdge = n("UIStroke", {
-        Color = C.accent,
-        Thickness = 1.5,
-        Transparency = 0.5,
-        ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
-        Parent = main,
-    })
-
-    -- 上层：粗的流动光带
+    -- ============ 流动光效（单层细光带，不侵入内容） ============
     local flowStroke = n("UIStroke", {
         Color = C.accent,
-        Thickness = 3.5,
-        Transparency = 0.15,
+        Thickness = 2,
+        Transparency = 0.25,
         ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
         Parent = main,
     })
     local flowGradient = n("UIGradient", {
         Color = ColorSequence.new({
             ColorSequenceKeypoint.new(0.00, Color3.fromRGB(30, 8, 8)),
-            ColorSequenceKeypoint.new(0.20, Color3.fromRGB(120, 25, 25)),
-            ColorSequenceKeypoint.new(0.40, Color3.fromRGB(255, 220, 220)),
-            ColorSequenceKeypoint.new(0.50, Color3.fromRGB(255, 90, 90)),
-            ColorSequenceKeypoint.new(0.60, Color3.fromRGB(255, 220, 220)),
-            ColorSequenceKeypoint.new(0.80, Color3.fromRGB(120, 25, 25)),
+            ColorSequenceKeypoint.new(0.20, Color3.fromRGB(140, 30, 30)),
+            ColorSequenceKeypoint.new(0.40, Color3.fromRGB(255, 230, 230)),
+            ColorSequenceKeypoint.new(0.50, Color3.fromRGB(255, 80, 80)),
+            ColorSequenceKeypoint.new(0.60, Color3.fromRGB(255, 230, 230)),
+            ColorSequenceKeypoint.new(0.80, Color3.fromRGB(140, 30, 30)),
             ColorSequenceKeypoint.new(1.00, Color3.fromRGB(30, 8, 8)),
         }),
         Rotation = 0,
@@ -1084,11 +1086,11 @@ function SKING:Create(config)
         userName.Text = LP.DisplayName
     end)
 
-    -- Body
+    -- Body（给光效留 4px 内缩）
     local body = n("Frame", {
         BackgroundTransparency = 1,
-        Size = UDim2.new(1, 0, 1, -67),
-        Position = UDim2.new(0, 0, 0, 67), Parent = main,
+        Size = UDim2.new(1, -4, 1, -71),
+        Position = UDim2.new(0, 2, 0, 69), Parent = main,
     })
 
     local sidebar = n("Frame", {
@@ -1098,16 +1100,15 @@ function SKING:Create(config)
 
     local content = n("Frame", {
         BackgroundTransparency = 1,
-        Size = UDim2.new(1, -SIDEBAR_W, 1, 0),
+        Size = UDim2.new(1, -SIDEBAR_W - 2, 1, 0),
         Position = UDim2.new(0, SIDEBAR_W, 0, 0), Parent = body,
     })
 
     local tabBarWrap = n("Frame", {
         BackgroundTransparency = 1,
         Size = UDim2.new(1, -48, 0, 36),
-        Position = UDim2.new(0, 24, 0, 16), Parent = content,
+        Position = UDim2.new(0, 24, 0, 12), Parent = content,
     })
-    -- ★ 修复：补 FillDirection = Horizontal
     n("UIListLayout", {
         FillDirection = Enum.FillDirection.Horizontal,
         Padding = UDim.new(0, 6),
@@ -1116,11 +1117,10 @@ function SKING:Create(config)
         Parent = tabBarWrap,
     })
 
-    -- Page（ScrollingFrame）
     local page = n("ScrollingFrame", {
         BackgroundTransparency = 1,
-        Size = UDim2.new(1, -48, 1, -70),
-        Position = UDim2.new(0, 24, 0, 66),
+        Size = UDim2.new(1, -48, 1, -62),
+        Position = UDim2.new(0, 24, 0, 60),
         BorderSizePixel = 0,
         ScrollBarThickness = 3,
         ScrollBarImageColor3 = C.track,
@@ -1162,7 +1162,6 @@ function SKING:Create(config)
         Parent = rightCol,
     })
 
-    -- ★ 修复：用 AbsoluteContentSize 做兜底高度源
     RunService.RenderStepped:Connect(function()
         local lh = math.max(leftCol.AbsoluteSize.Y, leftLayout.AbsoluteContentSize.Y)
         local rh = math.max(rightCol.AbsoluteSize.Y, rightLayout.AbsoluteContentSize.Y)
@@ -1173,7 +1172,6 @@ function SKING:Create(config)
         end
     end)
 
-    -- Overlay
     local overlay = n("Frame", {
         BackgroundTransparency = 1,
         Size = UDim2.fromScale(1, 1),
@@ -1264,45 +1262,42 @@ function Window:Tab(config)
 
     if config.Icon then
         local sidebarBtn = n("TextButton", {
-            Size = UDim2.fromOffset(44, 44),
-            Position = UDim2.new(0.5, -22, 0, 22 + (#self._Tabs) * 56),
+            Size = UDim2.fromOffset(48, 48),
+            Position = UDim2.new(0.5, -24, 0, 24 + (#self._Tabs) * 60),
             BackgroundTransparency = 1, Text = "", AutoButtonColor = false,
             Parent = self._Sidebar,
         })
-        corner(sidebarBtn, 11)
+        corner(sidebarBtn, 12)
 
         local isFirst = (#self._Tabs == 0)
 
         local activeBar = n("Frame", {
             BackgroundColor3 = C.accent,
-            Size = UDim2.new(0, 3, 0, 22),
-            Position = UDim2.new(0, -20, 0.5, -11),
+            Size = UDim2.new(0, 3, 0, 24),
+            Position = UDim2.new(0, -22, 0.5, -12),
             BorderSizePixel = 0,
             Visible = isFirst,
             Parent = sidebarBtn,
         })
         corner(activeBar, 2)
 
-        local ico = self:Icon(config.Icon)
-        local iconImg = n("ImageLabel", {
+        local iconText = n("TextLabel", {
             BackgroundTransparency = 1,
-            Size = UDim2.fromOffset(22, 22),
-            Position = UDim2.new(0.5, -11, 0.5, -11),
-            Image = ico.Image,
-            ImageRectSize = ico.ImageRectSize,
-            ImageRectOffset = ico.ImageRectOffset,
-            ImageColor3 = isFirst and C.iconActive or C.iconIdle,
+            Size = UDim2.fromScale(1, 1),
+            Text = self:GetIcon(config.Icon),
+            TextColor3 = isFirst and C.iconActive or C.iconIdle,
+            TextSize = 22, Font = Enum.Font.Montserrat,
             Parent = sidebarBtn,
         })
 
         sidebarBtn.MouseEnter:Connect(function()
             if self._CurrentTab ~= tabObj then
-                TweenService:Create(iconImg, TweenInfo.new(0.15), { ImageColor3 = C.text }):Play()
+                TweenService:Create(iconText, TweenInfo.new(0.15), { TextColor3 = C.text }):Play()
             end
         end)
         sidebarBtn.MouseLeave:Connect(function()
             if self._CurrentTab ~= tabObj then
-                TweenService:Create(iconImg, TweenInfo.new(0.15), { ImageColor3 = C.iconIdle }):Play()
+                TweenService:Create(iconText, TweenInfo.new(0.15), { TextColor3 = C.iconIdle }):Play()
             end
         end)
         sidebarBtn.MouseButton1Click:Connect(function()
@@ -1310,26 +1305,12 @@ function Window:Tab(config)
         end)
 
         table.insert(self._SidebarButtons, {
-            btn = sidebarBtn, bar = activeBar, icon = iconImg, tab = tabObj,
+            btn = sidebarBtn, bar = activeBar, icon = iconText, tab = tabObj,
         })
 
         tabObj._SidebarBtn = sidebarBtn
         tabObj._SidebarBar = activeBar
-        tabObj._SidebarIcon = iconImg
-
-        task.spawn(function()
-            local waited = 0
-            while not iconsReady and waited < 8 do
-                task.wait(0.1)
-                waited = waited + 0.1
-            end
-            if iconImg and iconImg.Parent then
-                local newIco = self:Icon(config.Icon)
-                iconImg.Image = newIco.Image
-                iconImg.ImageRectSize = newIco.ImageRectSize
-                iconImg.ImageRectOffset = newIco.ImageRectOffset
-            end
-        end)
+        tabObj._SidebarIcon = iconText
     end
 
     tabBtn.MouseButton1Click:Connect(function()
@@ -1361,10 +1342,10 @@ function Window:SelectTab(tabObj)
     for _, sb in ipairs(self._SidebarButtons) do
         if sb.tab == tabObj then
             sb.bar.Visible = true
-            TweenService:Create(sb.icon, TweenInfo.new(0.15), { ImageColor3 = C.iconActive }):Play()
+            TweenService:Create(sb.icon, TweenInfo.new(0.15), { TextColor3 = C.iconActive }):Play()
         else
             sb.bar.Visible = false
-            TweenService:Create(sb.icon, TweenInfo.new(0.15), { ImageColor3 = C.iconIdle }):Play()
+            TweenService:Create(sb.icon, TweenInfo.new(0.15), { TextColor3 = C.iconIdle }):Play()
         end
     end
 end
