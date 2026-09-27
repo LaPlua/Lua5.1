@@ -8,6 +8,9 @@ local LP = Players.LocalPlayer
 local SKING = {}
 SKING.__index = SKING
 
+-- ============================================================
+-- 图标系统
+-- ============================================================
 local ICON_DATA_URL = "https://raw.githubusercontent.com/Footagesus/Icons/main/Main-v2.lua"
 
 local iconPackData = nil
@@ -53,6 +56,9 @@ function SKING:Icon(name)
     }
 end
 
+-- ============================================================
+-- 配色
+-- ============================================================
 local C = {
     bg          = Color3.fromRGB(13, 13, 16),
     bgTop       = Color3.fromRGB(18, 18, 22),
@@ -100,7 +106,7 @@ local function stroke(p, col, th, trans)
 end
 
 -- ============================================================
--- Tab 类
+-- Tab
 -- ============================================================
 local Tab = {}
 Tab.__index = Tab
@@ -787,6 +793,7 @@ end
 -- ============================================================
 local Window = {}
 Window.__index = Window
+setmetatable(Window, { __index = SKING })
 
 function SKING:Create(config)
     config = config or {}
@@ -796,6 +803,7 @@ function SKING:Create(config)
 
     local MAIN_W = config.Width or 960
     local MAIN_H = config.Height or 620
+    local SIDEBAR_W = 84
 
     local screenGui = n("ScreenGui", {
         Name = config.Folder or "SKING_HUB",
@@ -940,17 +948,14 @@ function SKING:Create(config)
         Rotation = 90, Parent = main,
     })
     stroke(main, C.strokeOuter, 1, 0)
-    stroke(main, Color3.fromRGB(255, 255, 255), 1, 0.96)
 
-    -- ============ 流动光效 ============
     local flowStroke = n("UIStroke", {
         Color = C.accent,
         Thickness = 1.5,
-        Transparency = 0.35,
+        Transparency = 0.4,
         ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
         Parent = main,
     })
-
     local flowGradient = n("UIGradient", {
         Color = ColorSequence.new({
             ColorSequenceKeypoint.new(0.00, Color3.fromRGB(40, 12, 12)),
@@ -1080,16 +1085,15 @@ function SKING:Create(config)
         Position = UDim2.new(0, 0, 0, 67), Parent = main,
     })
 
-    local sidebarW = 84
     local sidebar = n("Frame", {
         BackgroundTransparency = 1,
-        Size = UDim2.new(0, sidebarW, 1, 0), Parent = body,
+        Size = UDim2.new(0, SIDEBAR_W, 1, 0), Parent = body,
     })
 
     local content = n("Frame", {
         BackgroundTransparency = 1,
-        Size = UDim2.new(1, -sidebarW, 1, 0),
-        Position = UDim2.new(0, sidebarW, 0, 0), Parent = body,
+        Size = UDim2.new(1, -SIDEBAR_W, 1, 0),
+        Position = UDim2.new(0, SIDEBAR_W, 0, 0), Parent = body,
     })
 
     local tabBarWrap = n("Frame", {
@@ -1104,13 +1108,8 @@ function SKING:Create(config)
         VerticalAlignment = Enum.VerticalAlignment.Center,
         Parent = tabBarWrap,
     })
-    n("UIPadding", {
-        PaddingLeft = UDim.new(0, 4),
-        PaddingRight = UDim.new(0, 4),
-        Parent = tabBarWrap,
-    })
 
-    -- Page + 双列布局
+    -- ============ Page + 双列布局（修复版：手动定位 + 动态高度） ============
     local page = n("ScrollingFrame", {
         BackgroundTransparency = 1,
         Size = UDim2.new(1, -48, 1, -70),
@@ -1119,7 +1118,7 @@ function SKING:Create(config)
         ScrollBarThickness = 3,
         ScrollBarImageColor3 = C.track,
         ScrollBarImageTransparency = 0.3,
-        CanvasSize = UDim2.new(0, 0, 0, 0),
+        CanvasSize = UDim2.new(1, 0, 0, 0),
         AutomaticCanvasSize = Enum.AutomaticSize.Y,
         ScrollingDirection = Enum.ScrollingDirection.Y,
         Parent = content,
@@ -1128,21 +1127,14 @@ function SKING:Create(config)
     local columnsWrap = n("Frame", {
         BackgroundTransparency = 1,
         Size = UDim2.new(1, 0, 0, 0),
-        AutomaticSize = Enum.AutomaticSize.Y,
         Parent = page,
-    })
-    n("UIListLayout", {
-        FillDirection = Enum.FillDirection.Horizontal,
-        Padding = UDim.new(0, 16),
-        SortOrder = Enum.SortOrder.LayoutOrder,
-        Parent = columnsWrap,
     })
 
     local leftCol = n("Frame", {
         BackgroundTransparency = 1,
         Size = UDim2.new(0.5, -8, 0, 0),
+        Position = UDim2.new(0, 0, 0, 0),
         AutomaticSize = Enum.AutomaticSize.Y,
-        LayoutOrder = 1,
         Parent = columnsWrap,
     })
     n("UIListLayout", {
@@ -1154,8 +1146,8 @@ function SKING:Create(config)
     local rightCol = n("Frame", {
         BackgroundTransparency = 1,
         Size = UDim2.new(0.5, -8, 0, 0),
+        Position = UDim2.new(0.5, 8, 0, 0),
         AutomaticSize = Enum.AutomaticSize.Y,
-        LayoutOrder = 2,
         Parent = columnsWrap,
     })
     n("UIListLayout", {
@@ -1164,6 +1156,17 @@ function SKING:Create(config)
         Parent = rightCol,
     })
 
+    -- 动态同步 columnsWrap 高度到两列最大高度
+    RunService.RenderStepped:Connect(function()
+        local lh = leftCol.AbsoluteSize.Y
+        local rh = rightCol.AbsoluteSize.Y
+        local h = math.max(lh, rh)
+        if math.abs(columnsWrap.AbsoluteSize.Y - h) > 0.5 then
+            columnsWrap.Size = UDim2.new(1, 0, 0, h)
+        end
+    end)
+
+    -- 下拉菜单 overlay
     local overlay = n("Frame", {
         BackgroundTransparency = 1,
         Size = UDim2.fromScale(1, 1),
@@ -1253,7 +1256,6 @@ function Window:Tab(config)
     tabObj._Btn = tabBtn
     tabObj._Label = tabLabel
 
-    -- 侧边栏图标
     if config.Icon then
         local sidebarBtn = n("TextButton", {
             Size = UDim2.fromOffset(44, 44),
@@ -1309,7 +1311,7 @@ function Window:Tab(config)
         tabObj._SidebarBar = activeBar
         tabObj._SidebarIcon = iconImg
 
-        -- 图标包异步加载完成后回填
+        -- 图标包异步加载完回填
         task.spawn(function()
             local waited = 0
             while not iconsReady and waited < 8 do
