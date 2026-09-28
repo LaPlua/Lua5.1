@@ -884,13 +884,61 @@ function SKING:Create(config)
         indicatorPulse.BackgroundTransparency = 0.5 + t * 0.45
     end)
 
+    -- ============================================================
+    -- mainHolder 加 AnchorPoint + UIScale 实现自适应
+    -- ============================================================
     local mainHolder = n("Frame", {
         BackgroundTransparency = 1,
         Size = UDim2.fromOffset(MAIN_W, MAIN_H),
-        Position = UDim2.new(0.5, -MAIN_W/2, 0.5, -MAIN_H/2),
+        Position = UDim2.new(0.5, 0, 0.5, 0),
+        AnchorPoint = Vector2.new(0.5, 0.5),
         Visible = false, ZIndex = 5, Parent = screenGui,
     })
 
+    local mainScale = n("UIScale", {
+        Scale = 1,
+        Parent = mainHolder,
+    })
+
+    self._MainScale = mainScale
+    self._RefW = MAIN_W
+    self._RefH = MAIN_H
+
+    local function updateScale()
+        local cam = workspace.CurrentCamera
+        if not cam then return end
+        local vp = cam.ViewportSize
+        if vp.X <= 0 or vp.Y <= 0 then return end
+
+        local targetW = vp.X * 0.82
+        local targetH = vp.Y * 0.82
+
+        local sW = targetW / MAIN_W
+        local sH = targetH / MAIN_H
+        local scale = math.min(sW, sH)
+        scale = math.clamp(scale, 0.5, 1.6)
+
+        mainScale.Scale = scale
+    end
+
+    updateScale()
+
+    local camConn
+    local function hookViewport()
+        if camConn then camConn:Disconnect() end
+        local cam = workspace.CurrentCamera
+        if cam then
+            camConn = cam:GetPropertyChangedSignal("ViewportSize"):Connect(updateScale)
+        end
+    end
+    hookViewport()
+
+    workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(function()
+        hookViewport()
+        updateScale()
+    end)
+
+    -- 主界面
     local main = n("Frame", {
         BackgroundColor3 = C.bg, Size = UDim2.fromScale(1, 1),
         BorderSizePixel = 0, Parent = mainHolder,
@@ -1264,7 +1312,7 @@ function Window:Open()
 
     local MAIN_W, MAIN_H = self._MainW, self._MainH
     self._MainHolder.Visible = true
-    self._MainHolder.Position = UDim2.new(0.5, -MAIN_W/2, 0.5, -MAIN_H/2)
+    self._MainHolder.Position = UDim2.new(0.5, 0, 0.5, 0)
     self._MainHolder.Size = UDim2.fromOffset(MAIN_W, MAIN_H)
     self._Main.AnchorPoint = Vector2.new(0.5, 0.5)
     self._Main.Position = UDim2.new(0.5, 0, 0.5, 0)
@@ -1316,6 +1364,12 @@ function Window:Toggle()
         self:Close()
     else
         self:Open()
+    end
+end
+
+function Window:SetScale(scale)
+    if self._MainScale then
+        self._MainScale.Scale = math.clamp(scale, 0.3, 2)
     end
 end
 
