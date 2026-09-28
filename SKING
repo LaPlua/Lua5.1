@@ -59,32 +59,33 @@ local function loadImageFromURL(url, folder)
 end
 
 local C = {
-    bg          = Color3.fromRGB(13, 13, 16),
-    bgTop       = Color3.fromRGB(18, 18, 22),
-    subBg       = Color3.fromRGB(17, 17, 21),
-    subItem     = Color3.fromRGB(24, 24, 29),
-    subItemHover= Color3.fromRGB(32, 32, 38),
-    subItemAct  = Color3.fromRGB(38, 38, 46),
-    card        = Color3.fromRGB(22, 22, 27),
-    cardHover   = Color3.fromRGB(30, 30, 36),
-    track       = Color3.fromRGB(38, 38, 46),
-    tabActive   = Color3.fromRGB(30, 30, 37),
-    tabIdle     = Color3.fromRGB(20, 20, 25),
-    accent      = Color3.fromRGB(230, 57, 57),
-    accentLight = Color3.fromRGB(255, 92, 92),
-    accentDark  = Color3.fromRGB(190, 40, 40),
-    success     = Color3.fromRGB(120, 220, 120),
-    text        = Color3.fromRGB(245, 245, 248),
-    textDim     = Color3.fromRGB(150, 150, 160),
-    textDesc    = Color3.fromRGB(105, 105, 118),
-    divider     = Color3.fromRGB(30, 30, 37),
-    strokeOuter = Color3.fromRGB(34, 34, 42),
-    iconIdle    = Color3.fromRGB(110, 110, 125),
-    iconActive  = Color3.fromRGB(230, 57, 57),
-    toggleOff   = Color3.fromRGB(52, 52, 60),
-    toggleKnob  = Color3.fromRGB(245, 245, 248),
-    floatTop    = Color3.fromRGB(28, 28, 34),
-    floatBottom = Color3.fromRGB(16, 16, 20),
+    bg            = Color3.fromRGB(13, 13, 16),
+    bgTop         = Color3.fromRGB(18, 18, 22),
+    sidebarCard   = Color3.fromRGB(22, 22, 28),
+    sidebarStroke = Color3.fromRGB(34, 34, 42),
+    pillBarBg     = Color3.fromRGB(20, 20, 25),
+    pillActive    = Color3.fromRGB(245, 245, 248),
+    pillActiveTxt = Color3.fromRGB(20, 20, 25),
+    pillIdle      = Color3.fromRGB(28, 28, 34),
+    pillIdleTxt   = Color3.fromRGB(150, 150, 160),
+    card          = Color3.fromRGB(22, 22, 27),
+    cardHover     = Color3.fromRGB(30, 30, 36),
+    track         = Color3.fromRGB(38, 38, 46),
+    accent        = Color3.fromRGB(230, 57, 57),
+    accentLight   = Color3.fromRGB(255, 92, 92),
+    accentDark    = Color3.fromRGB(190, 40, 40),
+    success       = Color3.fromRGB(120, 220, 120),
+    text          = Color3.fromRGB(245, 245, 248),
+    textDim       = Color3.fromRGB(150, 150, 160),
+    textDesc      = Color3.fromRGB(105, 105, 118),
+    divider       = Color3.fromRGB(30, 30, 37),
+    strokeOuter   = Color3.fromRGB(34, 34, 42),
+    iconIdle      = Color3.fromRGB(110, 110, 125),
+    iconActive    = Color3.fromRGB(230, 57, 57),
+    toggleOff     = Color3.fromRGB(52, 52, 60),
+    toggleKnob    = Color3.fromRGB(245, 245, 248),
+    floatTop      = Color3.fromRGB(28, 28, 34),
+    floatBottom   = Color3.fromRGB(16, 16, 20),
 }
 SKING.Colors = C
 SKING.IconMap = ICON
@@ -140,7 +141,7 @@ local function makeBrandIcon(parent, assetPath, letter, size, letterSize, posX)
 end
 
 -- ============================================================
--- Tab（每个 Tab 独立 Page）
+-- Tab
 -- ============================================================
 local Tab = {}
 Tab.__index = Tab
@@ -864,6 +865,7 @@ function SKING:Create(config)
     end)
     screenGui.Parent = ok and hui or CoreGui
 
+    -- 悬浮窗
     local floatBtn = n("TextButton", {
         Size = UDim2.fromOffset(220, 48),
         Position = UDim2.new(0.5, -110, 0, 18),
@@ -938,6 +940,7 @@ function SKING:Create(config)
         indicatorPulse.BackgroundTransparency = 0.5 + t * 0.45
     end)
 
+    -- 主容器
     local mainHolder = n("Frame", {
         BackgroundTransparency = 1,
         Size = UDim2.fromOffset(MAIN_W, MAIN_H),
@@ -958,7 +961,6 @@ function SKING:Create(config)
         local sH = (vp.Y * 0.82) / MAIN_H
         mainScale.Scale = math.clamp(math.min(sW, sH), 0.5, 1.6)
     end
-
     updateScale()
 
     local camConn
@@ -990,6 +992,7 @@ function SKING:Create(config)
     stroke(main, C.strokeOuter, 1, 0)
     stroke(main, Color3.fromRGB(255, 255, 255), 1, 0.96)
 
+    -- 边缘流动光效
     local flowStroke = n("UIStroke", {
         Color = C.accent, Thickness = 1.5, Transparency = 0.35,
         ApplyStrokeMode = Enum.ApplyStrokeMode.Border, Parent = main,
@@ -1011,6 +1014,7 @@ function SKING:Create(config)
         flowGradient.Offset = Vector2.new(flowPhase * 2 - 1, flowPhase * 2 - 1)
     end)
 
+    -- 顶部栏
     local topbar = n("Frame", {
         BackgroundTransparency = 1,
         Size = UDim2.new(1, 0, 0, 66), Parent = main,
@@ -1084,83 +1088,99 @@ function SKING:Create(config)
         userName.Text = LP.DisplayName
     end)
 
+    -- Body
     local body = n("Frame", {
         BackgroundTransparency = 1,
         Size = UDim2.new(1, 0, 1, -67),
         Position = UDim2.new(0, 0, 0, 67), Parent = main,
     })
 
-    -- 主侧边栏（滚动）
-    local sidebarW = 72
-    local sidebar = n("ScrollingFrame", {
+    -- 主侧边栏灰色卡片
+    local sidebarCard = n("Frame", {
+        BackgroundColor3 = C.sidebarCard,
+        Size = UDim2.new(0, 72, 1, -24),
+        Position = UDim2.new(0, 12, 0, 12),
+        BorderSizePixel = 0, Parent = body,
+    })
+    corner(sidebarCard, 16)
+    stroke(sidebarCard, C.sidebarStroke, 1, 0.4)
+
+    local sidebarScroll = n("ScrollingFrame", {
         BackgroundTransparency = 1,
-        Size = UDim2.new(0, sidebarW, 1, 0),
+        Size = UDim2.fromScale(1, 1),
         BorderSizePixel = 0,
         ScrollBarThickness = 0,
         CanvasSize = UDim2.new(0, 0, 0, 0),
         AutomaticCanvasSize = Enum.AutomaticSize.Y,
         ScrollingDirection = Enum.ScrollingDirection.Y,
+        Parent = sidebarCard,
+    })
+
+    local iconList = n("Frame", {
+        BackgroundTransparency = 1,
+        Size = UDim2.new(1, 0, 0, 0),
+        AutomaticSize = Enum.AutomaticSize.Y,
+        AnchorPoint = Vector2.new(0, 0.5),
+        Position = UDim2.new(0, 0, 0.5, 0),
+        Parent = sidebarScroll,
+    })
+    n("UIListLayout", {
+        Padding = UDim.new(0, 8),
+        HorizontalAlignment = Enum.HorizontalAlignment.Center,
+        SortOrder = Enum.SortOrder.LayoutOrder,
+        Parent = iconList,
+    })
+
+    -- 内容区
+    local contentArea = n("Frame", {
+        BackgroundTransparency = 1,
+        Size = UDim2.new(1, -96, 1, 0),
+        Position = UDim2.new(0, 96, 0, 0),
         Parent = body,
     })
-    n("UIListLayout", {
-        Padding = UDim.new(0, 12),
-        SortOrder = Enum.SortOrder.LayoutOrder,
-        HorizontalAlignment = Enum.HorizontalAlignment.Center,
-        Parent = sidebar,
+
+    -- 副侧边栏（横向胶囊栏）
+    local pillBarOuter = n("Frame", {
+        BackgroundTransparency = 1,
+        Size = UDim2.new(1, -24, 0, 44),
+        Position = UDim2.new(0, 12, 0, 12),
+        Parent = contentArea,
     })
+
+    local pillBar = n("Frame", {
+        BackgroundColor3 = C.pillBarBg,
+        Size = UDim2.new(0, 0, 1, 0),
+        AutomaticSize = Enum.AutomaticSize.X,
+        BorderSizePixel = 0, Parent = pillBarOuter,
+    })
+    corner(pillBar, 22)
+    stroke(pillBar, C.sidebarStroke, 1, 0.5)
+
     n("UIPadding", {
-        PaddingTop = UDim.new(0, 20), PaddingBottom = UDim.new(0, 20),
-        Parent = sidebar,
+        PaddingLeft = UDim.new(0, 4),
+        PaddingRight = UDim.new(0, 4),
+        PaddingTop = UDim.new(0, 4),
+        PaddingBottom = UDim.new(0, 4),
+        Parent = pillBar,
     })
 
-    -- 副侧边栏
-    local subW = 140
-    local subSidebar = n("Frame", {
-        BackgroundColor3 = C.subBg,
-        Size = UDim2.new(0, subW, 1, 0),
-        Position = UDim2.new(0, sidebarW, 0, 0),
-        BorderSizePixel = 0, Parent = body,
-    })
-
-    n("Frame", {
-        BackgroundColor3 = C.divider,
-        Size = UDim2.new(0, 1, 1, 0),
-        Position = UDim2.new(1, 0, 0, 0),
-        BorderSizePixel = 0, Parent = subSidebar,
-    })
-
-    local subScroll = n("ScrollingFrame", {
-        BackgroundTransparency = 1,
-        Size = UDim2.new(1, -16, 1, -24),
-        Position = UDim2.new(0, 8, 0, 12),
-        BorderSizePixel = 0,
-        ScrollBarThickness = 3,
-        ScrollBarImageColor3 = C.track,
-        ScrollBarImageTransparency = 0.4,
-        CanvasSize = UDim2.new(0, 0, 0, 0),
-        AutomaticCanvasSize = Enum.AutomaticSize.Y,
-        ScrollingDirection = Enum.ScrollingDirection.Y,
-        Parent = subSidebar,
-    })
     n("UIListLayout", {
+        FillDirection = Enum.FillDirection.Horizontal,
         Padding = UDim.new(0, 4),
-        SortOrder = Enum.SortOrder.LayoutOrder, Parent = subScroll,
+        VerticalAlignment = Enum.VerticalAlignment.Center,
+        SortOrder = Enum.SortOrder.LayoutOrder,
+        Parent = pillBar,
     })
 
-    -- 主内容区
-    local content = n("Frame", {
-        BackgroundTransparency = 1,
-        Size = UDim2.new(1, -(sidebarW + subW), 1, 0),
-        Position = UDim2.new(0, sidebarW + subW, 0, 0), Parent = body,
-    })
-
+    -- 页面容器
     local pageContainer = n("Frame", {
         BackgroundTransparency = 1,
-        Size = UDim2.new(1, -48, 1, -32),
-        Position = UDim2.new(0, 24, 0, 16),
-        Parent = content,
+        Size = UDim2.new(1, -24, 1, -76),
+        Position = UDim2.new(0, 12, 0, 68),
+        Parent = contentArea,
     })
 
+    -- Overlay（下拉菜单层）
     local overlay = n("Frame", {
         BackgroundTransparency = 1,
         Size = UDim2.fromScale(1, 1),
@@ -1182,10 +1202,10 @@ function SKING:Create(config)
     self._MainHolder = mainHolder
     self._Main = main
     self._Body = body
-    self._Sidebar = sidebar
-    self._SubSidebar = subSidebar
-    self._SubScroll = subScroll
-    self._Content = content
+    self._SidebarCard = sidebarCard
+    self._IconList = iconList
+    self._ContentArea = contentArea
+    self._PillBar = pillBar
     self._PageContainer = pageContainer
     self._Overlay = overlay
     self._BgClick = bgClick
@@ -1197,7 +1217,7 @@ function SKING:Create(config)
     self._Tabs = {}
     self._IconGroups = {}
     self._IconOrder = {}
-    self._SubButtons = {}
+    self._Pills = {}
     self._ActiveIconKey = nil
 
     bgClick.MouseButton1Click:Connect(function()
@@ -1215,7 +1235,9 @@ function SKING:Create(config)
     return self
 end
 
--- 抽出来的公共高亮函数
+-- ============================================================
+-- 内部方法
+-- ============================================================
 function Window:_applyIconGroupHighlight(iconKey)
     for key, group in pairs(self._IconGroups) do
         if key == iconKey then
@@ -1228,91 +1250,75 @@ function Window:_applyIconGroupHighlight(iconKey)
     end
 end
 
-function Window:_rebuildSubList(iconKey)
-    for _, btn in ipairs(self._SubButtons) do
-        btn:Destroy()
+function Window:_rebuildPillBar(iconKey)
+    for _, p in ipairs(self._Pills) do
+        p:Destroy()
     end
-    self._SubButtons = {}
+    self._Pills = {}
 
     local group = self._IconGroups[iconKey]
     if not group then return end
 
     for i, tabObj in ipairs(group.tabs) do
         local isActive = (self._CurrentTab == tabObj)
-        local item = n("TextButton", {
-            BackgroundColor3 = isActive and C.subItemAct or C.subItem,
-            Size = UDim2.new(1, 0, 0, 32),
+        local pill = n("TextButton", {
+            BackgroundColor3 = isActive and C.pillActive or C.pillIdle,
+            Size = UDim2.fromOffset(0, 32),
+            AutomaticSize = Enum.AutomaticSize.X,
             Text = "", AutoButtonColor = false,
-            LayoutOrder = i, Parent = self._SubScroll,
+            LayoutOrder = i, Parent = self._PillBar,
         })
-        corner(item, 8)
-
-        local indicator = n("Frame", {
-            BackgroundColor3 = C.accent,
-            Size = UDim2.new(0, 3, 0, 16),
-            Position = UDim2.new(0, -6, 0.5, -8),
-            BorderSizePixel = 0,
-            Visible = isActive, Parent = item,
-        })
-        corner(indicator, 2)
+        corner(pill, 16)
 
         local label = n("TextLabel", {
             BackgroundTransparency = 1,
-            Size = UDim2.new(1, -20, 1, 0),
-            Position = UDim2.new(0, 12, 0, 0),
+            Size = UDim2.new(0, 0, 1, 0),
+            AutomaticSize = Enum.AutomaticSize.X,
+            Position = UDim2.new(0, 16, 0, 0),
             Text = tabObj.Name,
-            TextColor3 = isActive and C.text or C.textDim,
+            TextColor3 = isActive and C.pillActiveTxt or C.pillIdleTxt,
             TextSize = 12, Font = Enum.Font.Montserrat,
             TextXAlignment = Enum.TextXAlignment.Left,
-            Parent = item,
+            Parent = pill,
+        })
+        local padR = n("Frame", {
+            BackgroundTransparency = 1,
+            Size = UDim2.new(0, 16, 1, 0),
+            Position = UDim2.new(1, 0, 0, 0),
+            Parent = pill,
         })
 
-        item.MouseEnter:Connect(function()
+        pill.MouseEnter:Connect(function()
             if self._CurrentTab ~= tabObj then
-                TweenService:Create(item, TweenInfo.new(0.15), { BackgroundColor3 = C.subItemHover }):Play()
+                TweenService:Create(pill, TweenInfo.new(0.15), {
+                    BackgroundColor3 = Color3.fromRGB(38, 38, 46),
+                }):Play()
                 TweenService:Create(label, TweenInfo.new(0.15), { TextColor3 = C.text }):Play()
             end
         end)
-        item.MouseLeave:Connect(function()
+        pill.MouseLeave:Connect(function()
             if self._CurrentTab ~= tabObj then
-                TweenService:Create(item, TweenInfo.new(0.15), { BackgroundColor3 = C.subItem }):Play()
-                TweenService:Create(label, TweenInfo.new(0.15), { TextColor3 = C.textDim }):Play()
+                TweenService:Create(pill, TweenInfo.new(0.15), {
+                    BackgroundColor3 = C.pillIdle,
+                }):Play()
+                TweenService:Create(label, TweenInfo.new(0.15), { TextColor3 = C.pillIdleTxt }):Play()
             end
         end)
-        item.MouseButton1Click:Connect(function()
+        pill.MouseButton1Click:Connect(function()
             self:SelectTab(tabObj)
         end)
 
-        item._indicator = indicator
-        item._label = label
-        item._tab = tabObj
-        table.insert(self._SubButtons, item)
+        pill._label = label
+        pill._tab = tabObj
+        table.insert(self._Pills, pill)
     end
-
-    -- 淡入动画
-    self._SubScroll.CanvasPosition = Vector2.new(0, 0)
-    local conn
-    local startT = tick()
-    conn = RunService.RenderStepped:Connect(function()
-        local dt = tick() - startT
-        if dt >= 0.15 then
-            conn:Disconnect()
-            return
-        end
-        for _, item in ipairs(self._SubButtons) do
-            if item.Parent then
-                item.BackgroundTransparency = 1 - (dt / 0.15)
-            end
-        end
-    end)
 end
 
-function Window:_updateSubHighlight()
-    for _, item in ipairs(self._SubButtons) do
-        local isActive = (self._CurrentTab == item._tab)
-        item.BackgroundColor3 = isActive and C.subItemAct or C.subItem
-        item._indicator.Visible = isActive
-        item._label.TextColor3 = isActive and C.text or C.textDim
+function Window:_updatePillHighlight()
+    for _, pill in ipairs(self._Pills) do
+        local isActive = (self._CurrentTab == pill._tab)
+        pill.BackgroundColor3 = isActive and C.pillActive or C.pillIdle
+        pill._label.TextColor3 = isActive and C.pillActiveTxt or C.pillIdleTxt
     end
 end
 
@@ -1321,7 +1327,6 @@ function Window:Tab(config)
     local iconKey = config.Icon or "_default"
     config.Icon = iconKey
 
-    -- 创建 Tab 对象（含独立 Page）
     local tabObj = Tab.new(self, config, self._PageContainer)
     table.insert(self._Tabs, tabObj)
 
@@ -1331,7 +1336,8 @@ function Window:Tab(config)
         local sidebarBtn = n("TextButton", {
             Size = UDim2.fromOffset(44, 44),
             BackgroundTransparency = 1, Text = "", AutoButtonColor = false,
-            Parent = self._Sidebar,
+            LayoutOrder = #self._IconOrder + 1,
+            Parent = self._IconList,
         })
         corner(sidebarBtn, 11)
 
@@ -1383,10 +1389,10 @@ function Window:Tab(config)
     if #self._Tabs == 1 then
         self._ActiveIconKey = iconKey
         self:_applyIconGroupHighlight(iconKey)
-        self:_rebuildSubList(iconKey)
+        self:_rebuildPillBar(iconKey)
         self:SelectTab(tabObj)
     elseif self._ActiveIconKey == iconKey then
-        self:_rebuildSubList(iconKey)
+        self:_rebuildPillBar(iconKey)
     end
 
     return tabObj
@@ -1408,15 +1414,13 @@ function Window:_selectIconGroup(iconKey)
     if group and #group.tabs > 0 then
         self:SelectTab(group.tabs[1])
     else
-        self:_rebuildSubList(iconKey)
+        self:_rebuildPillBar(iconKey)
     end
 end
 
 function Window:SelectTab(tabObj)
-    local previousTab = self._CurrentTab
     self._CurrentTab = tabObj
 
-    -- 切换 Page 显示
     for _, t in ipairs(self._Tabs) do
         if t == tabObj then
             t.Page.Visible = true
@@ -1425,25 +1429,23 @@ function Window:SelectTab(tabObj)
         end
     end
 
-    -- 目标 Tab 不在当前激活分组 → 切分组
     local targetIcon = tabObj.Icon
     if targetIcon and self._ActiveIconKey ~= targetIcon then
         self._ActiveIconKey = targetIcon
         self:_applyIconGroupHighlight(targetIcon)
-        self:_rebuildSubList(targetIcon)
+        self:_rebuildPillBar(targetIcon)
     else
-        -- 同分组内切 Tab，如果副栏里没有对应按钮，就重建（比如新 Tab 加进来时）
         local found = false
-        for _, item in ipairs(self._SubButtons) do
-            if item._tab == tabObj then
+        for _, p in ipairs(self._Pills) do
+            if p._tab == tabObj then
                 found = true
                 break
             end
         end
         if found then
-            self:_updateSubHighlight()
+            self:_updatePillHighlight()
         else
-            self:_rebuildSubList(self._ActiveIconKey)
+            self:_rebuildPillBar(self._ActiveIconKey)
         end
     end
 end
