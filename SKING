@@ -8,9 +8,6 @@ local LP = Players.LocalPlayer
 local SKING = {}
 SKING.__index = SKING
 
--- ============================================================
--- 内置文字符号图标表
--- ============================================================
 local ICON = {
     eye = "◎", crosshair = "◎", user = "▣", settings = "◆",
     package = "●", sparkles = "✦", shield = "❖", info = "◇",
@@ -26,9 +23,6 @@ function SKING:Icon(name)
     return ICON[name] or "●"
 end
 
--- ============================================================
--- 图片 URL → asset 路径
--- ============================================================
 local function isURL(str)
     return type(str) == "string" and (str:match("^https?://") ~= nil)
 end
@@ -118,7 +112,6 @@ local function stroke(p, col, th, trans)
     })
 end
 
--- 品牌图标：有 assetPath 用图片，否则红底方块+字母
 local function makeBrandIcon(parent, assetPath, letter, size, letterSize, posX)
     posX = posX or 8
     if assetPath then
@@ -150,9 +143,6 @@ local function makeBrandIcon(parent, assetPath, letter, size, letterSize, posX)
     end
 end
 
--- ============================================================
--- Tab 类
--- ============================================================
 local Tab = {}
 Tab.__index = Tab
 
@@ -234,14 +224,14 @@ function Tab:Toggle(config)
     corner(track, trackH / 2)
     stroke(track, Color3.fromRGB(0, 0, 0), 1, 0.7)
 
-    n("Frame", {
+    local hl = n("Frame", {
         BackgroundColor3 = Color3.fromRGB(255, 255, 255),
         BackgroundTransparency = 0.92,
         Size = UDim2.new(1, -4, 0, trackH / 2 - 2),
         Position = UDim2.new(0, 2, 0, 2),
         BorderSizePixel = 0, Parent = track,
-    }).Name = "Highlight"
-    corner(track.Highlight, trackH / 4 - 1)
+    })
+    corner(hl, trackH / 4 - 1)
 
     local knobShadow = n("Frame", {
         BackgroundColor3 = Color3.fromRGB(0, 0, 0),
@@ -350,14 +340,14 @@ function Tab:Slider(config)
     })
     corner(slider, trackH / 2)
 
-    n("Frame", {
+    local th = n("Frame", {
         BackgroundColor3 = Color3.fromRGB(0, 0, 0),
         BackgroundTransparency = 0.7,
         Size = UDim2.new(1, -4, 0, trackH / 2 - 2),
         Position = UDim2.new(0, 2, 0, 2),
         BorderSizePixel = 0, Parent = slider,
-    }).Name = "TopHighlight"
-    corner(slider.TopHighlight, trackH / 4 - 1)
+    })
+    corner(th, trackH / 4 - 1)
 
     local function pct() return (value - minV) / (maxV - minV) end
 
@@ -793,9 +783,6 @@ function Tab:Input(config)
     return obj
 end
 
--- ============================================================
--- Window
--- ============================================================
 local Window = {}
 Window.__index = Window
 
@@ -823,7 +810,6 @@ function SKING:Create(config)
     end)
     screenGui.Parent = ok and hui or CoreGui
 
-    -- 悬浮窗
     local floatBtn = n("TextButton", {
         Size = UDim2.fromOffset(220, 48),
         Position = UDim2.new(0.5, -110, 0, 18),
@@ -898,7 +884,6 @@ function SKING:Create(config)
         indicatorPulse.BackgroundTransparency = 0.5 + t * 0.45
     end)
 
-    -- 主界面
     local mainHolder = n("Frame", {
         BackgroundTransparency = 1,
         Size = UDim2.fromOffset(MAIN_W, MAIN_H),
@@ -929,13 +914,10 @@ function SKING:Create(config)
         Color = ColorSequence.new({
             ColorSequenceKeypoint.new(0.00, Color3.fromRGB(40, 12, 12)),
             ColorSequenceKeypoint.new(0.30, Color3.fromRGB(160, 35, 35)),
-            ColorSequenceKeypoint.new(0.45, Color3.fromRGB(255, 160,
-, 160)),
-            ColorSequenceKeypoint.new(   0.55, Color3.from })
-
-RGB(255, 160, 160)),
-            ColorSequence   Keypoint.new(0.70, Color n3.fromRGB(160, 35, ("35)),
-            ColorSequenceKeypoint.new(Text1.00, Color3.fromRGB(40, 12, 12)),
+            ColorSequenceKeypoint.new(0.45, Color3.fromRGB(255, 160, 160)),
+            ColorSequenceKeypoint.new(0.55, Color3.fromRGB(255, 160, 160)),
+            ColorSequenceKeypoint.new(0.70, Color3.fromRGB(160, 35, 35)),
+            ColorSequenceKeypoint.new(1.00, Color3.fromRGB(40, 12, 12)),
         }),
         Rotation = 0, Parent = flowStroke,
     })
@@ -980,7 +962,10 @@ RGB(255, 160, 160)),
         Position = UDim2.new(1, -300, 0.5, -17),
         Text = LP.DisplayName, TextColor3 = C.text,
         Font = Enum.Font.Montserrat, TextSize = 12,
-        TextXAlignment = Enum.TextXAlignment.Right, Parent = topbarLabel", {
+        TextXAlignment = Enum.TextXAlignment.Right, Parent = topbar,
+    })
+
+    n("TextLabel", {
         BackgroundTransparency = 1, Size = UDim2.fromOffset(240, 14),
         Position = UDim2.new(1, -300, 0.5, 2),
         Text = config.UserSubtitle or "", TextColor3 = C.textDim,
