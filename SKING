@@ -337,7 +337,7 @@ function Tab:Slider(config)
 
     local card = newInstance("Frame", {
         BackgroundColor3 = Colors.card,
-        Size = UDim2.new(1, 0, 0, 80),
+        Size = UDim2.new(1, 0, 0, 84),
         BorderSizePixel = 0,
         LayoutOrder = order,
         Parent = parent,
@@ -371,22 +371,22 @@ function Tab:Slider(config)
 
     local valueLabel = newInstance("TextLabel", {
         BackgroundTransparency = 1,
-        Size = UDim2.fromOffset(46, 18),
-        Position = UDim2.new(1, -226, 0.5, -9),
+        Size = UDim2.fromOffset(48, 18),
+        Position = UDim2.new(1, -268, 0.5, -9),
         Text = string.format("%.1f", value),
         TextColor3 = Colors.text,
-        TextSize = 12,
+        TextSize = 12.5,
         Font = Enum.Font.Montserrat,
         TextXAlignment = Enum.TextXAlignment.Right,
         Parent = card,
     })
 
-    local sliderW, trackH = 170, 12
+    local sliderW, trackH = 190, 16
 
     local slider = newInstance("Frame", {
         BackgroundColor3 = Colors.track,
         Size = UDim2.fromOffset(sliderW, trackH),
-        Position = UDim2.new(1, -186, 0.5, -trackH / 2),
+        Position = UDim2.new(1, -200, 0.5, -trackH / 2),
         BorderSizePixel = 0,
         Parent = card,
     })
@@ -412,18 +412,18 @@ function Tab:Slider(config)
         Parent = fill,
     })
 
-    local knobW, knobH = 10, 22
+    local knobW, knobH = 14, 28
 
     local knobShadow = newInstance("Frame", {
         BackgroundColor3 = Color3.new(0, 0, 0),
-        BackgroundTransparency = 0.55,
+        BackgroundTransparency = 0.5,
         Size = UDim2.fromOffset(knobW, knobH),
         Position = UDim2.new(percent(), -knobW / 2, 0.5, -knobH / 2 + 2),
         BorderSizePixel = 0,
         ZIndex = 2,
         Parent = slider,
     })
-    addCorner(knobShadow, 3)
+    addCorner(knobShadow, 4)
 
     local knob = newInstance("Frame", {
         BackgroundColor3 = Colors.toggleKnob,
@@ -433,8 +433,8 @@ function Tab:Slider(config)
         ZIndex = 3,
         Parent = slider,
     })
-    addCorner(knob, 3)
-    addStroke(knob, Color3.fromRGB(180, 180, 190), 1, 0.5)
+    addCorner(knob, 4)
+    addStroke(knob, Color3.fromRGB(200, 200, 210), 1, 0.4)
 
     local dragging = false
 
@@ -914,6 +914,12 @@ function Category:Tab(config)
 end
 
 function Category:SelectTab(tab)
+    if self.Window._ActiveMenu then
+        local menu = self.Window._ActiveMenu
+        self.Window._ActiveMenu = nil
+        menu.close()
+    end
+
     self._activeTab = tab
     for _, t in ipairs(self.Tabs) do
         if t == tab then
@@ -1305,7 +1311,7 @@ function Window:Category(config)
         Text = SKING:Icon(config.Icon),
         TextColor3 = Colors.iconIdle,
         TextSize = 20,
-        Font = Enum.Font.GothamBold,
+        Font = Enum.Font.Montserrat,
         Parent = sidebarBtn,
     })
 
@@ -1335,6 +1341,12 @@ function Window:Category(config)
 end
 
 function Window:SelectCategory(category)
+    if self._ActiveMenu then
+        local menu = self._ActiveMenu
+        self._ActiveMenu = nil
+        menu.close()
+    end
+
     self._ActiveCategory = category
     for _, cat in ipairs(self._Categories) do
         if cat == category then
