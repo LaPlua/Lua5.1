@@ -11,9 +11,6 @@ local LP = Players.LocalPlayer
 local SKING = {}
 SKING.__index = SKING
 
--- ============================================================
--- 内置图标（Unicode 符号，用 Montserrat 渲染）
--- ============================================================
 local ICON = {
     eye        = "◉",
     crosshair  = "◎",
@@ -46,22 +43,15 @@ local ICON = {
     xmark      = "✕",
     question   = "?",
     money      = "$",
-    heart_fill = "♥",
 }
 
 function SKING:GetIcon(name)
     if type(name) ~= "string" then return "?" end
-    -- 支持 pack:icon 格式，忽略 pack
     local colon = name:find(":")
-    if colon then
-        name = name:sub(colon + 1)
-    end
+    if colon then name = name:sub(colon + 1) end
     return ICON[name] or ICON.dot or "?"
 end
 
--- ============================================================
--- 配色
--- ============================================================
 local C = {
     bg          = Color3.fromRGB(13, 13, 16),
     bgTop       = Color3.fromRGB(18, 18, 22),
@@ -272,7 +262,6 @@ function Tab:Slider(config)
     local value = config.Default or 0
     local minV, maxV = config.Min or 0, config.Max or 100
 
-    -- 卡片加高，容纳竖直布局
     local card = n("Frame", {
         BackgroundColor3 = C.card,
         Size = UDim2.new(1, 0, 0, 92),
@@ -284,20 +273,20 @@ function Tab:Slider(config)
     -- 标题（左上）
     n("TextLabel", {
         BackgroundTransparency = 1,
-        Size = UDim2.new(1, -90, 0, 16),
+        Size = UDim2.new(1, -110, 0, 16),
         Position = UDim2.new(0, 16, 0, 12),
         Text = config.Title or "", TextColor3 = C.text,
         TextSize = 12.5, Font = Enum.Font.Montserrat,
         TextXAlignment = Enum.TextXAlignment.Left, Parent = card,
     })
 
-    -- 数字（右上，不重叠滑块）
+    -- ★ 数值显示在卡片右上，红色醒目
     local valueLabel = n("TextLabel", {
         BackgroundTransparency = 1,
-        Size = UDim2.fromOffset(70, 16),
-        Position = UDim2.new(1, -86, 0, 12),
+        Size = UDim2.fromOffset(90, 18),
+        Position = UDim2.new(1, -106, 0, 10),
         Text = string.format("%.1f", value),
-        TextColor3 = C.accent, TextSize = 12.5,
+        TextColor3 = C.accent, TextSize = 14,
         Font = Enum.Font.Montserrat,
         TextXAlignment = Enum.TextXAlignment.Right,
         Parent = card,
@@ -315,12 +304,12 @@ function Tab:Slider(config)
         TextWrapped = true, Parent = card,
     })
 
-    -- 滑块：横跨整个卡片宽度
+    -- 滑块：横跨卡片底部
     local trackH = 12
     local slider = n("Frame", {
         BackgroundColor3 = C.track,
         Size = UDim2.new(1, -32, 0, trackH),
-        Position = UDim2.new(0, 16, 0, 62),
+        Position = UDim2.new(0, 16, 0, 64),
         BorderSizePixel = 0, Parent = card,
     })
     corner(slider, trackH / 2)
@@ -955,7 +944,7 @@ function SKING:Create(config)
     })
     stroke(main, C.strokeOuter, 1, 0)
 
-    -- ============ 流动光效（单层细光带，不侵入内容） ============
+    -- 流动光效
     local flowStroke = n("UIStroke", {
         Color = C.accent,
         Thickness = 2,
@@ -1086,11 +1075,11 @@ function SKING:Create(config)
         userName.Text = LP.DisplayName
     end)
 
-    -- Body（给光效留 4px 内缩）
+    -- ★ Body：两侧内缩 10px、顶部内缩 73px，让内容远离边框光效
     local body = n("Frame", {
         BackgroundTransparency = 1,
-        Size = UDim2.new(1, -4, 1, -71),
-        Position = UDim2.new(0, 2, 0, 69), Parent = main,
+        Size = UDim2.new(1, -20, 1, -83),
+        Position = UDim2.new(0, 10, 0, 73), Parent = main,
     })
 
     local sidebar = n("Frame", {
@@ -1100,14 +1089,14 @@ function SKING:Create(config)
 
     local content = n("Frame", {
         BackgroundTransparency = 1,
-        Size = UDim2.new(1, -SIDEBAR_W - 2, 1, 0),
+        Size = UDim2.new(1, -SIDEBAR_W, 1, 0),
         Position = UDim2.new(0, SIDEBAR_W, 0, 0), Parent = body,
     })
 
     local tabBarWrap = n("Frame", {
         BackgroundTransparency = 1,
-        Size = UDim2.new(1, -48, 0, 36),
-        Position = UDim2.new(0, 24, 0, 12), Parent = content,
+        Size = UDim2.new(1, -40, 0, 36),
+        Position = UDim2.new(0, 20, 0, 12), Parent = content,
     })
     n("UIListLayout", {
         FillDirection = Enum.FillDirection.Horizontal,
@@ -1117,10 +1106,11 @@ function SKING:Create(config)
         Parent = tabBarWrap,
     })
 
+    -- ★ Page：两侧各留 26px，卡片远离边框
     local page = n("ScrollingFrame", {
         BackgroundTransparency = 1,
-        Size = UDim2.new(1, -48, 1, -62),
-        Position = UDim2.new(0, 24, 0, 60),
+        Size = UDim2.new(1, -52, 1, -62),
+        Position = UDim2.new(0, 26, 0, 60),
         BorderSizePixel = 0,
         ScrollBarThickness = 3,
         ScrollBarImageColor3 = C.track,
@@ -1138,7 +1128,7 @@ function SKING:Create(config)
 
     local leftCol = n("Frame", {
         BackgroundTransparency = 1,
-        Size = UDim2.new(0.5, -8, 0, 0),
+        Size = UDim2.new(0.5, -7, 0, 0),
         Position = UDim2.new(0, 0, 0, 0),
         AutomaticSize = Enum.AutomaticSize.Y,
         Parent = columnsWrap,
@@ -1151,8 +1141,8 @@ function SKING:Create(config)
 
     local rightCol = n("Frame", {
         BackgroundTransparency = 1,
-        Size = UDim2.new(0.5, -8, 0, 0),
-        Position = UDim2.new(0.5, 8, 0, 0),
+        Size = UDim2.new(0.5, -7, 0, 0),
+        Position = UDim2.new(0.5, 7, 0, 0),
         AutomaticSize = Enum.AutomaticSize.Y,
         Parent = columnsWrap,
     })
