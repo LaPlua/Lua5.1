@@ -3,44 +3,101 @@ local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local CoreGui = game:GetService("CoreGui")
-local Workspace = game:GetService("Workspace")
 local LP = Players.LocalPlayer
 
 local SKING = {}
 SKING.__index = SKING
 
+-- ============================================================
+-- 内置文字符号图标表
+-- ============================================================
 local ICON = {
-    eye="◉", crosshair="◎", user="▣", settings="◈",
-    package="⬢", sparkles="✦", shield="❖", info="◇",
-    ban="✚", star="★", heart="♥", zap="⚡",
-    folder="▤", search="◌", play="▶", arrow="→",
-    skull="☠", palette="✿", sword="†", flame="▲",
-    circle="●", square="■", triangle="▲", diamond="◆",
-    dot="•", plus="+", minus="−", check="✓",
-    xmark="✕", question="?", money="$",
+    eye = "◎", crosshair = "◎", user = "▣", settings = "◆",
+    package = "●", sparkles = "✦", shield = "❖", info = "◇",
+    ban = "✚", star = "★", heart = "♥", zap = "⚡",
+    folder = "▤", search = "⌕", play = "▶", arrow = "→",
+    skull = "☠", palette = "❈", sword = "✚", flame = "▲",
+    circle = "●", square = "■", triangle = "▲", diamond = "◆",
+    dot = "•", plus = "＋", minus = "－", check = "✓",
+    xmark = "×", question = "?", money = "$",
 }
 
-function SKING:GetIcon(name)
-    if type(name) ~= "string" then return "?" end
-    local colon = name:find(":")
-    if colon then name = name:sub(colon + 1) end
-    return ICON[name] or ICON.dot or "?"
+function SKING:Icon(name)
+    return ICON[name] or "●"
+end
+
+-- ============================================================
+-- 图片 URL → asset 路径
+-- ============================================================
+local function isURL(str)
+    return type(str) == "string" and (str:match("^https?://") ~= nil)
+end
+
+local function sanitizeFilename(url)
+    local name = url:match("([^/]+)$") or "image"
+    name = name:gsub("([^%w%-_%.])", "_")
+    if not name:match("%.") then name = name .. ".png" end
+    if #name > 64 then name = name:sub(1, 64) end
+    return name
+end
+
+local function loadImageFromURL(url, folder)
+    if not isURL(url) then return nil end
+    if not (writefile and getcustomasset and isfile and isfolder and makefolder) then return nil end
+    local req = request or http_request or (syn and syn.request) or (http and http.request)
+    if not req then return nil end
+
+    pcall(function()
+        if not isfolder(folder) then makefolder(folder) end
+        if not isfolder(folder .. "/assets") then makefolder(folder .. "/assets") end
+    end)
+
+    local path = folder .. "/assets/" .. sanitizeFilename(url)
+
+    if not isfile(path) then
+        local ok, res = pcall(function()
+            return req({
+                Url = url,
+                Method = "GET",
+                Headers = { ["User-Agent"] = "Roblox/Exploit" }
+            })
+        end)
+        if not ok or not res or not res.Body then return nil end
+        local wok = pcall(writefile, path, res.Body)
+        if not wok then return nil end
+    end
+
+    local ok, asset = pcall(getcustomasset, path)
+    if ok and asset then return asset end
+    return nil
 end
 
 local C = {
-    bg=Color3.fromRGB(13,13,16), bgTop=Color3.fromRGB(18,18,22),
-    card=Color3.fromRGB(22,22,27), cardHover=Color3.fromRGB(30,30,36),
-    track=Color3.fromRGB(38,38,46), tabActive=Color3.fromRGB(30,30,37),
-    tabIdle=Color3.fromRGB(20,20,25), accent=Color3.fromRGB(230,57,57),
-    accentLight=Color3.fromRGB(255,92,92), accentDark=Color3.fromRGB(190,40,40),
-    success=Color3.fromRGB(120,220,120), text=Color3.fromRGB(245,245,248),
-    textDim=Color3.fromRGB(150,150,160), textDesc=Color3.fromRGB(105,105,118),
-    divider=Color3.fromRGB(30,30,37), strokeOuter=Color3.fromRGB(34,34,42),
-    iconIdle=Color3.fromRGB(110,110,125), iconActive=Color3.fromRGB(230,57,57),
-    toggleOff=Color3.fromRGB(52,52,60), toggleKnob=Color3.fromRGB(245,245,248),
-    floatTop=Color3.fromRGB(28,28,34), floatBottom=Color3.fromRGB(16,16,20),
+    bg          = Color3.fromRGB(13, 13, 16),
+    bgTop       = Color3.fromRGB(18, 18, 22),
+    card        = Color3.fromRGB(22, 22, 27),
+    cardHover   = Color3.fromRGB(30, 30, 36),
+    track       = Color3.fromRGB(38, 38, 46),
+    tabActive   = Color3.fromRGB(30, 30, 37),
+    tabIdle     = Color3.fromRGB(20, 20, 25),
+    accent      = Color3.fromRGB(230, 57, 57),
+    accentLight = Color3.fromRGB(255, 92, 92),
+    accentDark  = Color3.fromRGB(190, 40, 40),
+    success     = Color3.fromRGB(120, 220, 120),
+    text        = Color3.fromRGB(245, 245, 248),
+    textDim     = Color3.fromRGB(150, 150, 160),
+    textDesc    = Color3.fromRGB(105, 105, 118),
+    divider     = Color3.fromRGB(30, 30, 37),
+    strokeOuter = Color3.fromRGB(34, 34, 42),
+    iconIdle    = Color3.fromRGB(110, 110, 125),
+    iconActive  = Color3.fromRGB(230, 57, 57),
+    toggleOff   = Color3.fromRGB(52, 52, 60),
+    toggleKnob  = Color3.fromRGB(245, 245, 248),
+    floatTop    = Color3.fromRGB(28, 28, 34),
+    floatBottom = Color3.fromRGB(16, 16, 20),
 }
 SKING.Colors = C
+SKING.IconMap = ICON
 
 local function n(cls, props, children)
     local i = Instance.new(cls)
@@ -49,19 +106,53 @@ local function n(cls, props, children)
     return i
 end
 
-local function corner(p, r) n("UICorner", {CornerRadius = UDim.new(0, r), Parent = p}) end
+local function corner(p, r)
+    n("UICorner", { CornerRadius = UDim.new(0, r), Parent = p })
+end
+
 local function stroke(p, col, th, trans)
-    return n("UIStroke", {Color = col, Thickness = th, Transparency = trans or 0,
-        ApplyStrokeMode = Enum.ApplyStrokeMode.Border, Parent = p})
+    return n("UIStroke", {
+        Color = col, Thickness = th,
+        Transparency = trans or 0,
+        ApplyStrokeMode = Enum.ApplyStrokeMode.Border, Parent = p,
+    })
 end
 
-local function getViewport()
-    local cam = Workspace.CurrentCamera
-    if cam then return cam.ViewportSize end
-    return Vector2.new(1280, 720)
+-- 品牌图标：有 assetPath 用图片，否则红底方块+字母
+local function makeBrandIcon(parent, assetPath, letter, size, letterSize, posX)
+    posX = posX or 8
+    if assetPath then
+        return n("ImageLabel", {
+            BackgroundTransparency = 1,
+            Size = UDim2.fromOffset(size, size),
+            Position = UDim2.new(0, posX, 0.5, -size / 2),
+            Image = assetPath,
+            ScaleType = Enum.ScaleType.Fit,
+            Parent = parent,
+        })
+    else
+        local frame = n("Frame", {
+            BackgroundColor3 = C.accent,
+            Size = UDim2.fromOffset(size, size),
+            Position = UDim2.new(0, posX, 0.5, -size / 2),
+            BorderSizePixel = 0, Parent = parent,
+        })
+        corner(frame, math.floor(size * 0.28))
+        stroke(frame, Color3.fromRGB(255, 255, 255), 1, 0.85)
+        n("TextLabel", {
+            BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1),
+            Text = letter or "S",
+            TextColor3 = Color3.new(1, 1, 1),
+            Font = Enum.Font.Montserrat, TextSize = letterSize,
+            Parent = frame,
+        })
+        return frame
+    end
 end
 
--- ============ Tab ============
+-- ============================================================
+-- Tab 类
+-- ============================================================
 local Tab = {}
 Tab.__index = Tab
 
@@ -83,9 +174,10 @@ function Tab:_nextOrder()
     if self._currentCol == "left" then
         self._leftOrder = self._leftOrder + 1
         return self._leftOrder
+    else
+        self._rightOrder = self._rightOrder + 1
+        return self._rightOrder
     end
-    self._rightOrder = self._rightOrder + 1
-    return self._rightOrder
 end
 
 function Tab:_currentParent()
@@ -105,30 +197,26 @@ function Tab:Section(title)
 end
 
 function Tab:Toggle(config)
-    local parent = self:_currentParent()
-    local order = self:_nextOrder()
+    local parent, order = self:_currentParent(), self:_nextOrder()
     local state = config.Default == true
     local trackW, trackH = 44, 24
 
     local card = n("Frame", {
-        BackgroundColor3 = C.card,
-        Size = UDim2.new(1, 0, 0, 62),
+        BackgroundColor3 = C.card, Size = UDim2.new(1, 0, 0, 62),
         BorderSizePixel = 0, LayoutOrder = order, Parent = parent,
     })
     corner(card, 11)
-    stroke(card, Color3.fromRGB(34,34,42), 1, 0.5)
+    stroke(card, Color3.fromRGB(34, 34, 42), 1, 0.5)
 
     n("TextLabel", {
-        BackgroundTransparency = 1,
-        Size = UDim2.new(1, -94, 0, 18),
+        BackgroundTransparency = 1, Size = UDim2.new(1, -94, 0, 18),
         Position = UDim2.new(0, 16, 0, 13),
         Text = config.Title or "", TextColor3 = C.text,
         TextSize = 12.5, Font = Enum.Font.Montserrat,
         TextXAlignment = Enum.TextXAlignment.Left, Parent = card,
     })
     n("TextLabel", {
-        BackgroundTransparency = 1,
-        Size = UDim2.new(1, -94, 0, 22),
+        BackgroundTransparency = 1, Size = UDim2.new(1, -94, 0, 22),
         Position = UDim2.new(0, 16, 0, 33),
         Text = config.Desc or "", TextColor3 = C.textDesc,
         TextSize = 10.5, Font = Enum.Font.Montserrat,
@@ -140,41 +228,41 @@ function Tab:Toggle(config)
     local track = n("TextButton", {
         BackgroundColor3 = state and C.accent or C.toggleOff,
         Size = UDim2.fromOffset(trackW, trackH),
-        Position = UDim2.new(1, -58, 0.5, -trackH/2),
+        Position = UDim2.new(1, -58, 0.5, -trackH / 2),
         Text = "", AutoButtonColor = false, Parent = card,
     })
-    corner(track, trackH/2)
-    stroke(track, Color3.fromRGB(0,0,0), 1, 0.7)
+    corner(track, trackH / 2)
+    stroke(track, Color3.fromRGB(0, 0, 0), 1, 0.7)
 
-    local hl = n("Frame", {
-        BackgroundColor3 = Color3.fromRGB(255,255,255),
+    n("Frame", {
+        BackgroundColor3 = Color3.fromRGB(255, 255, 255),
         BackgroundTransparency = 0.92,
-        Size = UDim2.new(1, -4, 0, trackH/2 - 2),
+        Size = UDim2.new(1, -4, 0, trackH / 2 - 2),
         Position = UDim2.new(0, 2, 0, 2),
         BorderSizePixel = 0, Parent = track,
-    })
-    corner(hl, trackH/4 - 1)
+    }).Name = "Highlight"
+    corner(track.Highlight, trackH / 4 - 1)
 
     local knobShadow = n("Frame", {
-        BackgroundColor3 = Color3.fromRGB(0,0,0),
+        BackgroundColor3 = Color3.fromRGB(0, 0, 0),
         BackgroundTransparency = 0.7,
-        Size = UDim2.fromOffset(trackH-4, trackH-4),
-        Position = UDim2.new(0, state and (trackW-trackH+1) or 3, 0.5, -(trackH-4)/2 + 1),
+        Size = UDim2.fromOffset(trackH - 4, trackH - 4),
+        Position = UDim2.new(0, state and (trackW - trackH + 1) or 3, 0.5, -(trackH - 4) / 2 + 1),
         BorderSizePixel = 0, ZIndex = 2, Parent = track,
     })
-    corner(knobShadow, (trackH-4)/2)
+    corner(knobShadow, (trackH - 4) / 2)
 
     local knob = n("Frame", {
         BackgroundColor3 = C.toggleKnob,
-        Size = UDim2.fromOffset(trackH-4, trackH-4),
-        Position = UDim2.new(0, state and (trackW-trackH+1) or 3, 0.5, -(trackH-4)/2),
+        Size = UDim2.fromOffset(trackH - 4, trackH - 4),
+        Position = UDim2.new(0, state and (trackW - trackH + 1) or 3, 0.5, -(trackH - 4) / 2),
         BorderSizePixel = 0, ZIndex = 3, Parent = track,
     })
-    corner(knob, (trackH-4)/2)
-    stroke(knob, Color3.fromRGB(0,0,0), 1, 0.85)
+    corner(knob, (trackH - 4) / 2)
+    stroke(knob, Color3.fromRGB(0, 0, 0), 1, 0.85)
 
     local knobDot = n("Frame", {
-        BackgroundColor3 = state and C.accent or Color3.fromRGB(180,180,190),
+        BackgroundColor3 = state and C.accent or Color3.fromRGB(180, 180, 190),
         Size = UDim2.fromOffset(7, 7),
         Position = UDim2.new(0.5, -3.5, 0.5, -3.5),
         BorderSizePixel = 0, ZIndex = 4, Parent = knob,
@@ -182,15 +270,19 @@ function Tab:Toggle(config)
     corner(knobDot, 3.5)
 
     local function apply(v)
-        local targetX = v and (trackW-trackH+1) or 3
+        local targetX = v and (trackW - trackH + 1) or 3
         TweenService:Create(track, TweenInfo.new(0.22, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-            BackgroundColor3 = v and C.accent or C.toggleOff}):Play()
+            BackgroundColor3 = v and C.accent or C.toggleOff,
+        }):Play()
         TweenService:Create(knob, TweenInfo.new(0.22, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-            Position = UDim2.new(0, targetX, 0.5, -(trackH-4)/2)}):Play()
+            Position = UDim2.new(0, targetX, 0.5, -(trackH - 4) / 2),
+        }):Play()
         TweenService:Create(knobShadow, TweenInfo.new(0.22, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-            Position = UDim2.new(0, targetX+1, 0.5, -(trackH-4)/2 + 1)}):Play()
+            Position = UDim2.new(0, targetX + 1, 0.5, -(trackH - 4) / 2 + 1),
+        }):Play()
         TweenService:Create(knobDot, TweenInfo.new(0.22), {
-            BackgroundColor3 = v and C.accent or Color3.fromRGB(180,180,190)}):Play()
+            BackgroundColor3 = v and C.accent or Color3.fromRGB(180, 180, 190),
+        }):Play()
     end
 
     track.MouseButton1Click:Connect(function()
@@ -212,65 +304,60 @@ function Tab:Toggle(config)
 end
 
 function Tab:Slider(config)
-    local parent = self:_currentParent()
-    local order = self:_nextOrder()
+    local parent, order = self:_currentParent(), self:_nextOrder()
     local value = config.Default or 0
     local minV, maxV = config.Min or 0, config.Max or 100
 
     local card = n("Frame", {
-        BackgroundColor3 = C.card,
-        Size = UDim2.new(1, 0, 0, 92),
+        BackgroundColor3 = C.card, Size = UDim2.new(1, 0, 0, 80),
         BorderSizePixel = 0, LayoutOrder = order, Parent = parent,
     })
     corner(card, 11)
-    stroke(card, Color3.fromRGB(34,34,42), 1, 0.5)
+    stroke(card, Color3.fromRGB(34, 34, 42), 1, 0.5)
 
     n("TextLabel", {
-        BackgroundTransparency = 1,
-        Size = UDim2.new(1, -110, 0, 16),
-        Position = UDim2.new(0, 16, 0, 12),
+        BackgroundTransparency = 1, Size = UDim2.new(1, -140, 0, 18),
+        Position = UDim2.new(0, 16, 0, 13),
         Text = config.Title or "", TextColor3 = C.text,
         TextSize = 12.5, Font = Enum.Font.Montserrat,
         TextXAlignment = Enum.TextXAlignment.Left, Parent = card,
     })
-
-    local valueLabel = n("TextLabel", {
-        BackgroundTransparency = 1,
-        Size = UDim2.fromOffset(90, 18),
-        Position = UDim2.new(1, -106, 0, 10),
-        Text = string.format("%.1f", value),
-        TextColor3 = C.accent, TextSize = 14,
-        Font = Enum.Font.Montserrat,
-        TextXAlignment = Enum.TextXAlignment.Right, Parent = card,
-    })
-
     n("TextLabel", {
-        BackgroundTransparency = 1,
-        Size = UDim2.new(1, -32, 0, 16),
-        Position = UDim2.new(0, 16, 0, 30),
+        BackgroundTransparency = 1, Size = UDim2.new(1, -140, 0, 18),
+        Position = UDim2.new(0, 16, 0, 32),
         Text = config.Desc or "", TextColor3 = C.textDesc,
         TextSize = 10.5, Font = Enum.Font.Montserrat,
         TextXAlignment = Enum.TextXAlignment.Left,
         TextYAlignment = Enum.TextYAlignment.Top, Parent = card,
     })
 
-    local trackH = 12
+    local valueLabel = n("TextLabel", {
+        BackgroundTransparency = 1, Size = UDim2.fromOffset(46, 18),
+        Position = UDim2.new(1, -226, 0.5, -9),
+        Text = string.format("%.1f", value),
+        TextColor3 = C.text, TextSize = 12,
+        Font = Enum.Font.Montserrat,
+        TextXAlignment = Enum.TextXAlignment.Right, Parent = card,
+    })
+
+    local sliderW, trackH = 170, 12
+
     local slider = n("Frame", {
         BackgroundColor3 = C.track,
-        Size = UDim2.new(1, -32, 0, trackH),
-        Position = UDim2.new(0, 16, 0, 64),
+        Size = UDim2.fromOffset(sliderW, trackH),
+        Position = UDim2.new(1, -186, 0.5, -trackH / 2),
         BorderSizePixel = 0, Parent = card,
     })
-    corner(slider, trackH/2)
+    corner(slider, trackH / 2)
 
-    local topHl = n("Frame", {
-        BackgroundColor3 = Color3.fromRGB(0,0,0),
+    n("Frame", {
+        BackgroundColor3 = Color3.fromRGB(0, 0, 0),
         BackgroundTransparency = 0.7,
-        Size = UDim2.new(1, -4, 0, trackH/2 - 2),
+        Size = UDim2.new(1, -4, 0, trackH / 2 - 2),
         Position = UDim2.new(0, 2, 0, 2),
         BorderSizePixel = 0, Parent = slider,
-    })
-    corner(topHl, trackH/4 - 1)
+    }).Name = "TopHighlight"
+    corner(slider.TopHighlight, trackH / 4 - 1)
 
     local function pct() return (value - minV) / (maxV - minV) end
 
@@ -279,20 +366,22 @@ function Tab:Slider(config)
         Size = UDim2.new(pct(), 0, 1, 0),
         BorderSizePixel = 0, Parent = slider,
     })
-    corner(fill, trackH/2)
+    corner(fill, trackH / 2)
     n("UIGradient", {
         Color = ColorSequence.new({
             ColorSequenceKeypoint.new(0, C.accentDark),
-            ColorSequenceKeypoint.new(1, C.accentLight)}),
+            ColorSequenceKeypoint.new(1, C.accentLight),
+        }),
         Rotation = 0, Parent = fill,
     })
 
     local knobW, knobH = 10, 22
+
     local knobShadow = n("Frame", {
-        BackgroundColor3 = Color3.fromRGB(0,0,0),
+        BackgroundColor3 = Color3.fromRGB(0, 0, 0),
         BackgroundTransparency = 0.55,
         Size = UDim2.fromOffset(knobW, knobH),
-        Position = UDim2.new(pct(), -knobW/2, 0.5, -knobH/2 + 2),
+        Position = UDim2.new(pct(), -knobW / 2, 0.5, -knobH / 2 + 2),
         BorderSizePixel = 0, ZIndex = 2, Parent = slider,
     })
     corner(knobShadow, 3)
@@ -300,19 +389,20 @@ function Tab:Slider(config)
     local knob = n("Frame", {
         BackgroundColor3 = C.toggleKnob,
         Size = UDim2.fromOffset(knobW, knobH),
-        Position = UDim2.new(pct(), -knobW/2, 0.5, -knobH/2),
+        Position = UDim2.new(pct(), -knobW / 2, 0.5, -knobH / 2),
         BorderSizePixel = 0, ZIndex = 3, Parent = slider,
     })
     corner(knob, 3)
-    stroke(knob, Color3.fromRGB(180,180,190), 1, 0.5)
+    stroke(knob, Color3.fromRGB(180, 180, 190), 1, 0.5)
 
     local dragging = false
+
     local function update(x)
         local rel = math.clamp((x - slider.AbsolutePosition.X) / slider.AbsoluteSize.X, 0, 1)
         value = minV + (maxV - minV) * rel
         fill.Size = UDim2.new(rel, 0, 1, 0)
-        knob.Position = UDim2.new(rel, -knobW/2, 0.5, -knobH/2)
-        knobShadow.Position = UDim2.new(rel, -knobW/2, 0.5, -knobH/2 + 2)
+        knob.Position = UDim2.new(rel, -knobW / 2, 0.5, -knobH / 2)
+        knobShadow.Position = UDim2.new(rel, -knobW / 2, 0.5, -knobH / 2 + 2)
         valueLabel.Text = string.format("%.1f", value)
         if config.Callback then config.Callback(value) end
     end
@@ -345,8 +435,8 @@ function Tab:Slider(config)
         value = math.clamp(v, minV, maxV)
         local rel = pct()
         fill.Size = UDim2.new(rel, 0, 1, 0)
-        knob.Position = UDim2.new(rel, -knobW/2, 0.5, -knobH/2)
-        knobShadow.Position = UDim2.new(rel, -knobW/2, 0.5, -knobH/2 + 2)
+        knob.Position = UDim2.new(rel, -knobW / 2, 0.5, -knobH / 2)
+        knobShadow.Position = UDim2.new(rel, -knobW / 2, 0.5, -knobH / 2 + 2)
         valueLabel.Text = string.format("%.1f", value)
         if config.Callback then config.Callback(value) end
     end
@@ -354,33 +444,28 @@ function Tab:Slider(config)
 end
 
 function Tab:Dropdown(config)
-    local parent = self:_currentParent()
-    local order = self:_nextOrder()
+    local parent, order = self:_currentParent(), self:_nextOrder()
     local options = config.Options or {}
     local selected = config.Default or options[1] or ""
     local window = self.Window
-    local toggleMenuFn = nil
-    local menuOpen = false
+    local toggleMenuFn, menuOpen = nil, false
 
     local card = n("Frame", {
-        BackgroundColor3 = C.card,
-        Size = UDim2.new(1, 0, 0, 62),
+        BackgroundColor3 = C.card, Size = UDim2.new(1, 0, 0, 62),
         BorderSizePixel = 0, LayoutOrder = order, Parent = parent,
     })
     corner(card, 11)
-    stroke(card, Color3.fromRGB(34,34,42), 1, 0.5)
+    stroke(card, Color3.fromRGB(34, 34, 42), 1, 0.5)
 
     n("TextLabel", {
-        BackgroundTransparency = 1,
-        Size = UDim2.new(1, -140, 0, 18),
+        BackgroundTransparency = 1, Size = UDim2.new(1, -140, 0, 18),
         Position = UDim2.new(0, 16, 0, 13),
         Text = config.Title or "", TextColor3 = C.text,
         TextSize = 12.5, Font = Enum.Font.Montserrat,
         TextXAlignment = Enum.TextXAlignment.Left, Parent = card,
     })
     n("TextLabel", {
-        BackgroundTransparency = 1,
-        Size = UDim2.new(1, -140, 0, 22),
+        BackgroundTransparency = 1, Size = UDim2.new(1, -140, 0, 22),
         Position = UDim2.new(0, 16, 0, 33),
         Text = config.Desc or "", TextColor3 = C.textDesc,
         TextSize = 10.5, Font = Enum.Font.Montserrat,
@@ -393,20 +478,21 @@ function Tab:Dropdown(config)
         BackgroundColor3 = C.track,
         Size = UDim2.fromOffset(110, 30),
         Position = UDim2.new(1, -126, 0.5, -15),
-        Text = "", AutoButtonColor = false, ZIndex = 3, Parent = card,
+        Text = "", AutoButtonColor = false,
+        ZIndex = 3, Parent = card,
     })
     corner(btn, 8)
     local btnStroke = stroke(btn, C.strokeOuter, 1, 0.4)
     n("UIGradient", {
         Color = ColorSequence.new({
-            ColorSequenceKeypoint.new(0, Color3.fromRGB(48,48,56)),
-            ColorSequenceKeypoint.new(1, Color3.fromRGB(36,36,44))}),
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(48, 48, 56)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(36, 36, 44)),
+        }),
         Rotation = 90, Parent = btn,
     })
 
     local label = n("TextLabel", {
-        BackgroundTransparency = 1,
-        Size = UDim2.new(1, -28, 1, 0),
+        BackgroundTransparency = 1, Size = UDim2.new(1, -28, 1, 0),
         Position = UDim2.new(0, 11, 0, 0),
         Text = selected, TextColor3 = C.text,
         TextSize = 11.5, Font = Enum.Font.Montserrat,
@@ -414,8 +500,7 @@ function Tab:Dropdown(config)
     })
 
     local arrow = n("TextLabel", {
-        BackgroundTransparency = 1,
-        Size = UDim2.fromOffset(14, 14),
+        BackgroundTransparency = 1, Size = UDim2.fromOffset(14, 14),
         Position = UDim2.new(1, -22, 0.5, -7),
         Text = "▾", TextColor3 = C.textDim,
         TextSize = 12, Font = Enum.Font.Montserrat, Parent = btn,
@@ -431,23 +516,27 @@ function Tab:Dropdown(config)
     stroke(menu, C.strokeOuter, 1, 0.1)
     n("UIGradient", {
         Color = ColorSequence.new({
-            ColorSequenceKeypoint.new(0, Color3.fromRGB(34,34,40)),
-            ColorSequenceKeypoint.new(1, Color3.fromRGB(26,26,32))}),
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(34, 34, 40)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(26, 26, 32)),
+        }),
         Rotation = 90, Parent = menu,
     })
 
     local inner = n("Frame", {
         BackgroundTransparency = 1,
-        Size = UDim2.new(1, 0, 0, #options * 26 + 8), Parent = menu,
+        Size = UDim2.new(1, 0, 0, #options * 26 + 8),
+        Parent = menu,
     })
-    n("UIListLayout", {Padding = UDim.new(0, 2), SortOrder = Enum.SortOrder.LayoutOrder, Parent = inner})
-    n("UIPadding", {PaddingTop = UDim.new(0, 4), PaddingBottom = UDim.new(0, 4),
-        PaddingLeft = UDim.new(0, 4), PaddingRight = UDim.new(0, 4), Parent = inner})
+    n("UIListLayout", { Padding = UDim.new(0, 2), SortOrder = Enum.SortOrder.LayoutOrder, Parent = inner })
+    n("UIPadding", {
+        PaddingTop = UDim.new(0, 4), PaddingBottom = UDim.new(0, 4),
+        PaddingLeft = UDim.new(0, 4), PaddingRight = UDim.new(0, 4), Parent = inner,
+    })
 
     local items = {}
     for i, opt in ipairs(options) do
         local item = n("TextButton", {
-            BackgroundColor3 = Color3.fromRGB(0,0,0),
+            BackgroundColor3 = Color3.fromRGB(0, 0, 0),
             BackgroundTransparency = 1,
             Size = UDim2.new(1, 0, 0, 24),
             Text = "", AutoButtonColor = false,
@@ -488,23 +577,24 @@ function Tab:Dropdown(config)
         setVisual(opt == selected)
 
         item.MouseEnter:Connect(function()
-            TweenService:Create(item, TweenInfo.new(0.15), {BackgroundTransparency = 0.85}):Play()
-            TweenService:Create(text, TweenInfo.new(0.15), {Position = UDim2.new(0, 15, 0, 0)}):Play()
+            TweenService:Create(item, TweenInfo.new(0.15), { BackgroundTransparency = 0.85 }):Play()
+            TweenService:Create(text, TweenInfo.new(0.15), { Position = UDim2.new(0, 15, 0, 0) }):Play()
         end)
         item.MouseLeave:Connect(function()
-            TweenService:Create(item, TweenInfo.new(0.15), {BackgroundTransparency = 1}):Play()
+            TweenService:Create(item, TweenInfo.new(0.15), { BackgroundTransparency = 1 }):Play()
             TweenService:Create(text, TweenInfo.new(0.15), {
-                Position = UDim2.new(0, (opt == selected) and 13 or 11, 0, 0)}):Play()
+                Position = UDim2.new(0, (opt == selected) and 13 or 11, 0, 0),
+            }):Play()
         end)
         item.MouseButton1Click:Connect(function()
             selected = opt
             label.Text = opt
-            for _, entry in ipairs(items) do entry.setVisual(entry.opt == selected) end
+            for _, e in ipairs(items) do e.setVisual(e.opt == selected) end
             if toggleMenuFn then toggleMenuFn(false) end
             if config.Callback then config.Callback(opt) end
         end)
 
-        table.insert(items, {opt = opt, setVisual = setVisual})
+        table.insert(items, { opt = opt, setVisual = setVisual })
     end
 
     function toggleMenuFn(open)
@@ -518,7 +608,7 @@ function Tab:Dropdown(config)
                 window._ActiveMenu = nil
                 prev.close()
             end
-            window._ActiveMenu = {close = function() toggleMenuFn(false) end}
+            window._ActiveMenu = { close = function() toggleMenuFn(false) end }
 
             local btnAbs = btn.AbsolutePosition
             local mainAbs = window._Main.AbsolutePosition
@@ -531,22 +621,22 @@ function Tab:Dropdown(config)
 
             TweenService:Create(menu, TweenInfo.new(0.24, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
                 Size = UDim2.new(0, 110, 0, #options * 26 + 8),
-                BackgroundTransparency = 0}):Play()
-            TweenService:Create(arrow, TweenInfo.new(0.24, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-                Rotation = 180}):Play()
-            TweenService:Create(btnStroke, TweenInfo.new(0.2), {Color = C.accent}):Play()
-            TweenService:Create(label, TweenInfo.new(0.2), {TextColor3 = C.accent}):Play()
+                BackgroundTransparency = 0,
+            }):Play()
+            TweenService:Create(arrow, TweenInfo.new(0.24, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { Rotation = 180 }):Play()
+            TweenService:Create(btnStroke, TweenInfo.new(0.2), { Color = C.accent }):Play()
+            TweenService:Create(label, TweenInfo.new(0.2), { TextColor3 = C.accent }):Play()
         else
             window._ActiveMenu = nil
             window._BgClick.Visible = false
 
             TweenService:Create(menu, TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
                 Size = UDim2.new(0, 110, 0, 0),
-                BackgroundTransparency = 0.15}):Play()
-            TweenService:Create(arrow, TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
-                Rotation = 0}):Play()
-            TweenService:Create(btnStroke, TweenInfo.new(0.2), {Color = C.strokeOuter}):Play()
-            TweenService:Create(label, TweenInfo.new(0.2), {TextColor3 = C.text}):Play()
+                BackgroundTransparency = 0.15,
+            }):Play()
+            TweenService:Create(arrow, TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.In), { Rotation = 0 }):Play()
+            TweenService:Create(btnStroke, TweenInfo.new(0.2), { Color = C.strokeOuter }):Play()
+            TweenService:Create(label, TweenInfo.new(0.2), { TextColor3 = C.text }):Play()
             task.delay(0.2, function()
                 if not menuOpen then
                     menu.Visible = false
@@ -558,7 +648,7 @@ function Tab:Dropdown(config)
 
     btn.MouseButton1Click:Connect(function() toggleMenuFn() end)
 
-    local obj = {_options = options}
+    local obj = { _options = options }
     function obj:Get() return selected end
     function obj:SetValues(newOptions)
         options = newOptions
@@ -568,29 +658,25 @@ function Tab:Dropdown(config)
 end
 
 function Tab:Button(config)
-    local parent = self:_currentParent()
-    local order = self:_nextOrder()
+    local parent, order = self:_currentParent(), self:_nextOrder()
 
     local card = n("TextButton", {
-        BackgroundColor3 = C.card,
-        Size = UDim2.new(1, 0, 0, 62),
+        BackgroundColor3 = C.card, Size = UDim2.new(1, 0, 0, 62),
         BorderSizePixel = 0, LayoutOrder = order,
         Text = "", AutoButtonColor = false, Parent = parent,
     })
     corner(card, 11)
-    stroke(card, Color3.fromRGB(34,34,42), 1, 0.5)
+    stroke(card, Color3.fromRGB(34, 34, 42), 1, 0.5)
 
     n("TextLabel", {
-        BackgroundTransparency = 1,
-        Size = UDim2.new(1, -92, 0, 18),
+        BackgroundTransparency = 1, Size = UDim2.new(1, -92, 0, 18),
         Position = UDim2.new(0, 16, 0, 13),
         Text = config.Title or "", TextColor3 = C.text,
         TextSize = 12.5, Font = Enum.Font.Montserrat,
         TextXAlignment = Enum.TextXAlignment.Left, Parent = card,
     })
     n("TextLabel", {
-        BackgroundTransparency = 1,
-        Size = UDim2.new(1, -92, 0, 22),
+        BackgroundTransparency = 1, Size = UDim2.new(1, -92, 0, 22),
         Position = UDim2.new(0, 16, 0, 33),
         Text = config.Desc or "", TextColor3 = C.textDesc,
         TextSize = 10.5, Font = Enum.Font.Montserrat,
@@ -609,57 +695,56 @@ function Tab:Button(config)
     n("UIGradient", {
         Color = ColorSequence.new({
             ColorSequenceKeypoint.new(0, C.accentLight),
-            ColorSequenceKeypoint.new(1, C.accentDark)}),
+            ColorSequenceKeypoint.new(1, C.accentDark),
+        }),
         Rotation = 90, Parent = btn,
     })
     n("TextLabel", {
         BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1),
-        Text = config.ButtonText or "执行", TextColor3 = Color3.new(1,1,1),
+        Text = config.ButtonText or "执行", TextColor3 = Color3.new(1, 1, 1),
         TextSize = 11.5, Font = Enum.Font.Montserrat, Parent = btn,
     })
 
     card.MouseEnter:Connect(function()
-        TweenService:Create(card, TweenInfo.new(0.15), {BackgroundColor3 = C.cardHover}):Play()
+        TweenService:Create(card, TweenInfo.new(0.15), { BackgroundColor3 = C.cardHover }):Play()
     end)
     card.MouseLeave:Connect(function()
-        TweenService:Create(card, TweenInfo.new(0.15), {BackgroundColor3 = C.card}):Play()
+        TweenService:Create(card, TweenInfo.new(0.15), { BackgroundColor3 = C.card }):Play()
     end)
     card.MouseButton1Click:Connect(function()
         TweenService:Create(btn, TweenInfo.new(0.08), {
             Size = UDim2.fromOffset(62, 26),
-            Position = UDim2.new(1, -80, 0.5, -13)}):Play()
+            Position = UDim2.new(1, -80, 0.5, -13),
+        }):Play()
         task.delay(0.1, function()
             TweenService:Create(btn, TweenInfo.new(0.18, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
                 Size = UDim2.fromOffset(66, 28),
-                Position = UDim2.new(1, -82, 0.5, -14)}):Play()
+                Position = UDim2.new(1, -82, 0.5, -14),
+            }):Play()
         end)
         if config.Callback then config.Callback() end
     end)
 end
 
 function Tab:Input(config)
-    local parent = self:_currentParent()
-    local order = self:_nextOrder()
+    local parent, order = self:_currentParent(), self:_nextOrder()
 
     local card = n("Frame", {
-        BackgroundColor3 = C.card,
-        Size = UDim2.new(1, 0, 0, 62),
+        BackgroundColor3 = C.card, Size = UDim2.new(1, 0, 0, 62),
         BorderSizePixel = 0, LayoutOrder = order, Parent = parent,
     })
     corner(card, 11)
-    stroke(card, Color3.fromRGB(34,34,42), 1, 0.5)
+    stroke(card, Color3.fromRGB(34, 34, 42), 1, 0.5)
 
     n("TextLabel", {
-        BackgroundTransparency = 1,
-        Size = UDim2.new(1, -140, 0, 18),
+        BackgroundTransparency = 1, Size = UDim2.new(1, -140, 0, 18),
         Position = UDim2.new(0, 16, 0, 13),
         Text = config.Title or "", TextColor3 = C.text,
         TextSize = 12.5, Font = Enum.Font.Montserrat,
         TextXAlignment = Enum.TextXAlignment.Left, Parent = card,
     })
     n("TextLabel", {
-        BackgroundTransparency = 1,
-        Size = UDim2.new(1, -140, 0, 22),
+        BackgroundTransparency = 1, Size = UDim2.new(1, -140, 0, 22),
         Position = UDim2.new(0, 16, 0, 33),
         Text = config.Desc or "", TextColor3 = C.textDesc,
         TextSize = 10.5, Font = Enum.Font.Montserrat,
@@ -682,19 +767,23 @@ function Tab:Input(config)
     })
     corner(inputBox, 8)
     local inputStroke = stroke(inputBox, C.strokeOuter, 1, 0.4)
-    n("UIPadding", {PaddingLeft = UDim.new(0, 10), PaddingRight = UDim.new(0, 10), Parent = inputBox})
+    n("UIPadding", {
+        PaddingLeft = UDim.new(0, 10),
+        PaddingRight = UDim.new(0, 10), Parent = inputBox,
+    })
     n("UIGradient", {
         Color = ColorSequence.new({
-            ColorSequenceKeypoint.new(0, Color3.fromRGB(48,48,56)),
-            ColorSequenceKeypoint.new(1, Color3.fromRGB(36,36,44))}),
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(48, 48, 56)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(36, 36, 44)),
+        }),
         Rotation = 90, Parent = inputBox,
     })
 
     inputBox.Focused:Connect(function()
-        TweenService:Create(inputStroke, TweenInfo.new(0.2), {Color = C.accent}):Play()
+        TweenService:Create(inputStroke, TweenInfo.new(0.2), { Color = C.accent }):Play()
     end)
     inputBox.FocusLost:Connect(function()
-        TweenService:Create(inputStroke, TweenInfo.new(0.2), {Color = C.strokeOuter}):Play()
+        TweenService:Create(inputStroke, TweenInfo.new(0.2), { Color = C.strokeOuter }):Play()
         if config.Callback then config.Callback(inputBox.Text) end
     end)
 
@@ -704,34 +793,34 @@ function Tab:Input(config)
     return obj
 end
 
--- ============ Window ============
+-- ============================================================
+-- Window
+-- ============================================================
 local Window = {}
 Window.__index = Window
-setmetatable(Window, {__index = SKING})
 
 function SKING:Create(config)
     config = config or {}
     local self = setmetatable({}, Window)
     self.Config = config
 
-    local viewport = getViewport()
-    local margin = 40
-    local desiredW = config.Width or 960
-    local desiredH = config.Height or 620
-    local MAIN_W = math.min(desiredW, viewport.X - margin * 2)
-    local MAIN_H = math.min(desiredH, viewport.Y - margin * 2)
-    MAIN_W = math.max(MAIN_W, 400)
-    MAIN_H = math.max(MAIN_H, 300)
+    local MAIN_W = config.Width or 960
+    local MAIN_H = config.Height or 620
+    local folder = config.Folder or "SKING_HUB"
 
-    local SIDEBAR_W = 84
+    local brandAsset = nil
+    if isURL(config.Icon) then
+        brandAsset = loadImageFromURL(config.Icon, folder)
+    end
 
     local screenGui = n("ScreenGui", {
-        Name = config.Folder or "SKING_HUB",
-        ResetOnSpawn = false,
+        Name = folder, ResetOnSpawn = false,
         ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
         IgnoreGuiInset = true,
     })
-    local ok, hui = pcall(function() return gethui and gethui() or CoreGui end)
+    local ok, hui = pcall(function()
+        return gethui and gethui() or CoreGui
+    end)
     screenGui.Parent = ok and hui or CoreGui
 
     -- 悬浮窗
@@ -746,44 +835,22 @@ function SKING:Create(config)
     n("UIGradient", {
         Color = ColorSequence.new({
             ColorSequenceKeypoint.new(0, C.floatTop),
-            ColorSequenceKeypoint.new(1, C.floatBottom)}),
+            ColorSequenceKeypoint.new(1, C.floatBottom),
+        }),
         Rotation = 90, Parent = floatBtn,
     })
     stroke(floatBtn, C.strokeOuter, 1, 0)
-    stroke(floatBtn, Color3.fromRGB(255,255,255), 1, 0.94)
+    stroke(floatBtn, Color3.fromRGB(255, 255, 255), 1, 0.94)
 
-    local floatBtnInner = n("Frame", {BackgroundTransparency = 1, Size = UDim2.fromScale(1,1), Parent = floatBtn})
-
-    local floatIconFrame = n("Frame", {
-        BackgroundColor3 = C.accent,
-        Size = UDim2.fromOffset(32, 32),
-        Position = UDim2.new(0, 8, 0.5, -16),
-        BorderSizePixel = 0, Parent = floatBtnInner,
+    local floatBtnInner = n("Frame", {
+        BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1),
+        Parent = floatBtn,
     })
-    corner(floatIconFrame, 9)
-    stroke(floatIconFrame, Color3.fromRGB(255,255,255), 1, 0.85)
 
-    if config.Icon and type(config.Icon) == "string" and config.Icon ~= "" then
-        n("ImageLabel", {
-            BackgroundTransparency = 1,
-            Size = UDim2.fromScale(0.75, 0.75),
-            Position = UDim2.fromScale(0.125, 0.125),
-            Image = config.Icon, ScaleType = Enum.ScaleType.Fit,
-            Parent = floatIconFrame,
-        })
-    else
-        n("TextLabel", {
-            BackgroundTransparency = 1, Size = UDim2.fromScale(1,1),
-            Text = config.FloatLetter or "S",
-            TextColor3 = Color3.new(1,1,1),
-            Font = Enum.Font.Montserrat, TextSize = 16,
-            Parent = floatIconFrame,
-        })
-    end
+    makeBrandIcon(floatBtnInner, brandAsset, config.FloatLetter or "S", 32, 16, 8)
 
     n("TextLabel", {
-        BackgroundTransparency = 1,
-        Size = UDim2.new(1, -80, 0, 16),
+        BackgroundTransparency = 1, Size = UDim2.new(1, -80, 0, 16),
         Position = UDim2.new(0, 48, 0.5, -16),
         Text = config.Title or "SKING HUB", TextColor3 = C.text,
         Font = Enum.Font.Montserrat, TextSize = 13,
@@ -791,10 +858,9 @@ function SKING:Create(config)
     })
 
     local floatHint = n("TextLabel", {
-        BackgroundTransparency = 1,
-        Size = UDim2.new(1, -80, 0, 13),
+        BackgroundTransparency = 1, Size = UDim2.new(1, -80, 0, 13),
         Position = UDim2.new(0, 48, 0.5, 2),
-        Text = "点击展开", TextColor3 = C.textDim,
+        Text = config.ExpandHint or "点击展开", TextColor3 = C.textDim,
         Font = Enum.Font.Montserrat, TextSize = 10,
         TextXAlignment = Enum.TextXAlignment.Left, Parent = floatBtnInner,
     })
@@ -807,7 +873,8 @@ function SKING:Create(config)
 
     local indicatorPulse = n("Frame", {
         Size = UDim2.fromOffset(7, 7),
-        BackgroundColor3 = C.accent, BackgroundTransparency = 0.5,
+        BackgroundColor3 = C.accent,
+        BackgroundTransparency = 0.5,
         BorderSizePixel = 0, ZIndex = 1, Parent = indicatorWrap,
     })
     corner(indicatorPulse, 3.5)
@@ -818,7 +885,7 @@ function SKING:Create(config)
         BorderSizePixel = 0, ZIndex = 2, Parent = indicatorWrap,
     })
     corner(indicatorDot, 3.5)
-    stroke(indicatorDot, Color3.fromRGB(255,255,255), 1, 0.9)
+    stroke(indicatorDot, Color3.fromRGB(255, 255, 255), 1, 0.9)
 
     local pulsePhase = 0
     RunService.Heartbeat:Connect(function(dt)
@@ -831,13 +898,6 @@ function SKING:Create(config)
         indicatorPulse.BackgroundTransparency = 0.5 + t * 0.45
     end)
 
-    floatBtn.MouseEnter:Connect(function()
-        TweenService:Create(floatIconFrame, TweenInfo.new(0.2), {BackgroundColor3 = C.accentLight}):Play()
-    end)
-    floatBtn.MouseLeave:Connect(function()
-        TweenService:Create(floatIconFrame, TweenInfo.new(0.2), {BackgroundColor3 = C.accent}):Play()
-    end)
-
     -- 主界面
     local mainHolder = n("Frame", {
         BackgroundTransparency = 1,
@@ -847,42 +907,48 @@ function SKING:Create(config)
     })
 
     local main = n("Frame", {
-        BackgroundColor3 = C.bg,
-        Size = UDim2.fromScale(1,1), BorderSizePixel = 0,
-        Parent = mainHolder,
+        BackgroundColor3 = C.bg, Size = UDim2.fromScale(1, 1),
+        BorderSizePixel = 0, Parent = mainHolder,
     })
     corner(main, 14)
     n("UIGradient", {
         Color = ColorSequence.new({
             ColorSequenceKeypoint.new(0, C.bgTop),
-            ColorSequenceKeypoint.new(1, C.bg)}),
+            ColorSequenceKeypoint.new(1, C.bg),
+        }),
         Rotation = 90, Parent = main,
     })
     stroke(main, C.strokeOuter, 1, 0)
+    stroke(main, Color3.fromRGB(255, 255, 255), 1, 0.96)
 
     local flowStroke = n("UIStroke", {
-        Color = C.accent, Thickness = 2, Transparency = 0.25,
+        Color = C.accent, Thickness = 1.5, Transparency = 0.35,
         ApplyStrokeMode = Enum.ApplyStrokeMode.Border, Parent = main,
     })
     local flowGradient = n("UIGradient", {
         Color = ColorSequence.new({
-            ColorSequenceKeypoint.new(0.00, Color3.fromRGB(30,8,8)),
-            ColorSequenceKeypoint.new(0.20, Color3.fromRGB(140,30,30)),
-            ColorSequenceKeypoint.new(0.40, Color3.fromRGB(255,230,230)),
-            ColorSequenceKeypoint.new(0.50, Color3.fromRGB(255,80,80)),
-            ColorSequenceKeypoint.new(0.60, Color3.fromRGB(255,230,230)),
-            ColorSequenceKeypoint.new(0.80, Color3.fromRGB(140,30,30)),
-            ColorSequenceKeypoint.new(1.00, Color3.fromRGB(30,8,8))}),
+            ColorSequenceKeypoint.new(0.00, Color3.fromRGB(40, 12, 12)),
+            ColorSequenceKeypoint.new(0.30, Color3.fromRGB(160, 35, 35)),
+            ColorSequenceKeypoint.new(0.45, Color3.fromRGB(255, 160,
+, 160)),
+            ColorSequenceKeypoint.new(   0.55, Color3.from })
+
+RGB(255, 160, 160)),
+            ColorSequence   Keypoint.new(0.70, Color n3.fromRGB(160, 35, ("35)),
+            ColorSequenceKeypoint.new(Text1.00, Color3.fromRGB(40, 12, 12)),
+        }),
         Rotation = 0, Parent = flowStroke,
     })
-
     local flowPhase = 0
     RunService.RenderStepped:Connect(function(dt)
-        flowPhase = (flowPhase + dt * 0.5) % 1
+        flowPhase = (flowPhase + dt * 0.35) % 1
         flowGradient.Offset = Vector2.new(flowPhase * 2 - 1, flowPhase * 2 - 1)
     end)
 
-    local topbar = n("Frame", {BackgroundTransparency = 1, Size = UDim2.new(1,0,0,66), Parent = main})
+    local topbar = n("Frame", {
+        BackgroundTransparency = 1,
+        Size = UDim2.new(1, 0, 0, 66), Parent = main,
+    })
 
     n("Frame", {
         BackgroundColor3 = C.divider,
@@ -891,35 +957,10 @@ function SKING:Create(config)
         BorderSizePixel = 0, Parent = main,
     })
 
-    local brandIcon = n("Frame", {
-        BackgroundColor3 = C.accent,
-        Size = UDim2.fromOffset(36, 36),
-        Position = UDim2.new(0, 18, 0.5, -18),
-        BorderSizePixel = 0, Parent = topbar,
-    })
-    corner(brandIcon, 9)
-    stroke(brandIcon, Color3.fromRGB(255,255,255), 1, 0.85)
-
-    if config.Icon and type(config.Icon) == "string" and config.Icon ~= "" then
-        n("ImageLabel", {
-            BackgroundTransparency = 1,
-            Size = UDim2.fromScale(0.75, 0.75),
-            Position = UDim2.fromScale(0.125, 0.125),
-            Image = config.Icon, ScaleType = Enum.ScaleType.Fit,
-            Parent = brandIcon,
-        })
-    else
-        n("TextLabel", {
-            BackgroundTransparency = 1, Size = UDim2.fromScale(1,1),
-            Text = config.FloatLetter or "S",
-            TextColor3 = Color3.new(1,1,1),
-            Font = Enum.Font.Montserrat, TextSize = 20, Parent = brandIcon,
-        })
-    end
+    makeBrandIcon(topbar, brandAsset, config.FloatLetter or "S", 36, 20, 18)
 
     n("TextLabel", {
-        BackgroundTransparency = 1,
-        Size = UDim2.fromOffset(400, 16),
+        BackgroundTransparency = 1, Size = UDim2.fromOffset(400, 16),
         Position = UDim2.new(0, 66, 0.5, -17),
         Text = config.Title or "SKING HUB", TextColor3 = C.text,
         Font = Enum.Font.Montserrat, TextSize = 13,
@@ -927,8 +968,7 @@ function SKING:Create(config)
     })
 
     n("TextLabel", {
-        BackgroundTransparency = 1,
-        Size = UDim2.fromOffset(400, 14),
+        BackgroundTransparency = 1, Size = UDim2.fromOffset(400, 14),
         Position = UDim2.new(0, 66, 0.5, 2),
         Text = config.Slogan or "", TextColor3 = C.textDim,
         Font = Enum.Font.Montserrat, TextSize = 10,
@@ -936,17 +976,12 @@ function SKING:Create(config)
     })
 
     local userName = n("TextLabel", {
-        BackgroundTransparency = 1,
-        Size = UDim2.fromOffset(240, 16),
+        BackgroundTransparency = 1, Size = UDim2.fromOffset(240, 16),
         Position = UDim2.new(1, -300, 0.5, -17),
         Text = LP.DisplayName, TextColor3 = C.text,
         Font = Enum.Font.Montserrat, TextSize = 12,
-        TextXAlignment = Enum.TextXAlignment.Right, Parent = topbar,
-    })
-
-    n("TextLabel", {
-        BackgroundTransparency = 1,
-        Size = UDim2.fromOffset(240, 14),
+        TextXAlignment = Enum.TextXAlignment.Right, Parent = topbarLabel", {
+        BackgroundTransparency = 1, Size = UDim2.fromOffset(240, 14),
         Position = UDim2.new(1, -300, 0.5, 2),
         Text = config.UserSubtitle or "", TextColor3 = C.textDim,
         Font = Enum.Font.Montserrat, TextSize = 10,
@@ -954,16 +989,16 @@ function SKING:Create(config)
     })
 
     local avatar = n("Frame", {
-        BackgroundColor3 = Color3.fromRGB(30,30,36),
+        BackgroundColor3 = Color3.fromRGB(30, 30, 36),
         Size = UDim2.fromOffset(36, 36),
         Position = UDim2.new(1, -54, 0.5, -18),
         BorderSizePixel = 0, ClipsDescendants = true, Parent = topbar,
     })
     corner(avatar, 18)
-    stroke(avatar, Color3.fromRGB(60,60,70), 1, 0.2)
+    stroke(avatar, Color3.fromRGB(60, 60, 70), 1, 0.2)
 
     local avatarImage = n("ImageLabel", {
-        BackgroundTransparency = 1, Size = UDim2.fromScale(1,1),
+        BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1),
         Image = "rbxthumb://type=AvatarHeadShot&id=" .. LP.UserId .. "&w=150&h=150",
         ScaleType = Enum.ScaleType.Crop, Parent = avatar,
     })
@@ -982,25 +1017,26 @@ function SKING:Create(config)
 
     local body = n("Frame", {
         BackgroundTransparency = 1,
-        Size = UDim2.new(1, -20, 1, -83),
-        Position = UDim2.new(0, 10, 0, 73), Parent = main,
+        Size = UDim2.new(1, 0, 1, -67),
+        Position = UDim2.new(0, 0, 0, 67), Parent = main,
     })
 
+    local sidebarW = 84
     local sidebar = n("Frame", {
         BackgroundTransparency = 1,
-        Size = UDim2.new(0, SIDEBAR_W, 1, 0), Parent = body,
+        Size = UDim2.new(0, sidebarW, 1, 0), Parent = body,
     })
 
     local content = n("Frame", {
         BackgroundTransparency = 1,
-        Size = UDim2.new(1, -SIDEBAR_W, 1, 0),
-        Position = UDim2.new(0, SIDEBAR_W, 0, 0), Parent = body,
+        Size = UDim2.new(1, -sidebarW, 1, 0),
+        Position = UDim2.new(0, sidebarW, 0, 0), Parent = body,
     })
 
     local tabBarWrap = n("Frame", {
         BackgroundTransparency = 1,
-        Size = UDim2.new(1, -40, 0, 36),
-        Position = UDim2.new(0, 20, 0, 12), Parent = content,
+        Size = UDim2.new(1, -48, 0, 36),
+        Position = UDim2.new(0, 24, 0, 16), Parent = content,
     })
     n("UIListLayout", {
         FillDirection = Enum.FillDirection.Horizontal,
@@ -1009,85 +1045,70 @@ function SKING:Create(config)
         VerticalAlignment = Enum.VerticalAlignment.Center,
         Parent = tabBarWrap,
     })
+    n("UIPadding", {
+        PaddingLeft = UDim.new(0, 4),
+        PaddingRight = UDim.new(0, 4),
+        Parent = tabBarWrap,
+    })
 
     local page = n("ScrollingFrame", {
         BackgroundTransparency = 1,
-        Size = UDim2.new(1, -52, 1, -62),
-        Position = UDim2.new(0, 26, 0, 60),
+        Size = UDim2.new(1, -48, 1, -70),
+        Position = UDim2.new(0, 24, 0, 66),
         BorderSizePixel = 0,
-        ScrollBarThickness = 2,
+        ScrollBarThickness = 3,
         ScrollBarImageColor3 = C.track,
         ScrollBarImageTransparency = 0.3,
-        CanvasSize = UDim2.new(0, 0, 0, 2000),
+        CanvasSize = UDim2.new(0, 0, 0, 0),
+        AutomaticCanvasSize = Enum.AutomaticSize.Y,
         ScrollingDirection = Enum.ScrollingDirection.Y,
         Parent = content,
     })
 
     local columnsWrap = n("Frame", {
         BackgroundTransparency = 1,
-        Size = UDim2.new(1, 0, 0, 0), Parent = page,
+        Size = UDim2.new(1, 0, 0, 0),
+        AutomaticSize = Enum.AutomaticSize.Y,
+        Parent = page,
+    })
+    n("UIListLayout", {
+        FillDirection = Enum.FillDirection.Horizontal,
+        Padding = UDim.new(0, 16),
+        SortOrder = Enum.SortOrder.LayoutOrder,
+        Parent = columnsWrap,
     })
 
     local leftCol = n("Frame", {
         BackgroundTransparency = 1,
-        Size = UDim2.fromOffset(200, 0),
-        Position = UDim2.fromOffset(0, 0),
+        Size = UDim2.new(0.5, -8, 0, 0),
         AutomaticSize = Enum.AutomaticSize.Y,
-        Parent = columnsWrap,
+        LayoutOrder = 1, Parent = columnsWrap,
     })
-    local leftLayout = n("UIListLayout", {
-        Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder, Parent = leftCol,
+    n("UIListLayout", {
+        Padding = UDim.new(0, 8),
+        SortOrder = Enum.SortOrder.LayoutOrder, Parent = leftCol,
     })
 
     local rightCol = n("Frame", {
         BackgroundTransparency = 1,
-        Size = UDim2.fromOffset(200, 0),
-        Position = UDim2.fromOffset(216, 0),
+        Size = UDim2.new(0.5, -8, 0, 0),
         AutomaticSize = Enum.AutomaticSize.Y,
-        Parent = columnsWrap,
+        LayoutOrder = 2, Parent = columnsWrap,
     })
-    local rightLayout = n("UIListLayout", {
-        Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder, Parent = rightCol,
+    n("UIListLayout", {
+        Padding = UDim.new(0, 8),
+        SortOrder = Enum.SortOrder.LayoutOrder, Parent = rightCol,
     })
-
-    -- ★ 关键修复：列宽用像素值，每帧动态计算，给滚动条留 12px
-    local COLUMN_GAP = 16
-    local SCROLLBAR_RESERVE = 12
-    local cachedColW = 0
-
-    RunService.RenderStepped:Connect(function()
-        local pageW = page.AbsoluteSize.X
-        if pageW <= 20 then return end
-
-        local usableW = pageW - SCROLLBAR_RESERVE
-        local colW = math.floor((usableW - COLUMN_GAP) / 2)
-        if colW < 120 then colW = 120 end
-
-        if colW ~= cachedColW then
-            cachedColW = colW
-            leftCol.Size = UDim2.fromOffset(colW, 0)
-            rightCol.Size = UDim2.fromOffset(colW, 0)
-            rightCol.Position = UDim2.fromOffset(colW + COLUMN_GAP, 0)
-        end
-
-        local lh = math.max(leftCol.AbsoluteSize.Y, leftLayout.AbsoluteContentSize.Y)
-        local rh = math.max(rightCol.AbsoluteSize.Y, rightLayout.AbsoluteContentSize.Y)
-        local maxH = math.max(lh, rh)
-        if maxH > 0 then
-            columnsWrap.Size = UDim2.fromOffset(usableW, maxH)
-            page.CanvasSize = UDim2.new(0, usableW, 0, maxH + 20)
-        end
-    end)
 
     local overlay = n("Frame", {
         BackgroundTransparency = 1,
-        Size = UDim2.fromScale(1,1),
+        Size = UDim2.fromScale(1, 1),
         Visible = false, ZIndex = 100, Parent = main,
     })
 
     local bgClick = n("TextButton", {
         BackgroundTransparency = 1,
-        Size = UDim2.fromScale(1,1),
+        Size = UDim2.fromScale(1, 1),
         Text = "", AutoButtonColor = false,
         ZIndex = 99, Visible = false, Parent = main,
     })
@@ -1095,7 +1116,6 @@ function SKING:Create(config)
     self._ScreenGui = screenGui
     self._FloatBtn = floatBtn
     self._FloatHint = floatHint
-    self._FloatIcon = floatIconFrame
     self._IndicatorDot = indicatorDot
     self._IndicatorPulse = indicatorPulse
     self._MainHolder = mainHolder
@@ -1133,7 +1153,9 @@ function SKING:Create(config)
         end
     end)
 
-    floatBtn.MouseButton1Click:Connect(function() self:Toggle() end)
+    floatBtn.MouseButton1Click:Connect(function()
+        self:Toggle()
+    end)
 
     return self
 end
@@ -1152,7 +1174,7 @@ function Window:Tab(config)
     corner(tabBtn, 14)
 
     local tabLabel = n("TextLabel", {
-        BackgroundTransparency = 1, Size = UDim2.fromScale(1,1),
+        BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1),
         Text = config.Title or "Tab",
         TextColor3 = (index == 1) and C.text or C.textDim,
         TextSize = 12, Font = Enum.Font.Montserrat,
@@ -1165,56 +1187,65 @@ function Window:Tab(config)
 
     if config.Icon then
         local sidebarBtn = n("TextButton", {
-            Size = UDim2.fromOffset(48, 48),
-            Position = UDim2.new(0.5, -24, 0, 24 + (#self._Tabs) * 60),
+            Size = UDim2.fromOffset(44, 44),
+            Position = UDim2.new(0.5, -22, 0, 22 + (#self._Tabs) * 56),
             BackgroundTransparency = 1, Text = "", AutoButtonColor = false,
             Parent = self._Sidebar,
         })
-        corner(sidebarBtn, 12)
+        corner(sidebarBtn, 11)
 
         local isFirst = (#self._Tabs == 0)
         local activeBar = n("Frame", {
             BackgroundColor3 = C.accent,
-            Size = UDim2.new(0, 3, 0, 24),
-            Position = UDim2.new(0, -22, 0.5, -12),
+            Size = UDim2.new(0, 3, 0, 22),
+            Position = UDim2.new(0, -20, 0.5, -11),
             BorderSizePixel = 0, Visible = isFirst, Parent = sidebarBtn,
         })
         corner(activeBar, 2)
 
         local iconText = n("TextLabel", {
-            BackgroundTransparency = 1, Size = UDim2.fromScale(1,1),
-            Text = self:GetIcon(config.Icon),
+            BackgroundTransparency = 1,
+            Size = UDim2.fromScale(1, 1),
+            Text = SKING:Icon(config.Icon),
             TextColor3 = isFirst and C.iconActive or C.iconIdle,
-            TextSize = 22, Font = Enum.Font.Montserrat,
+            TextSize = 20, Font = Enum.Font.GothamBold,
             Parent = sidebarBtn,
         })
 
         sidebarBtn.MouseEnter:Connect(function()
             if self._CurrentTab ~= tabObj then
-                TweenService:Create(iconText, TweenInfo.new(0.15), {TextColor3 = C.text}):Play()
+                TweenService:Create(iconText, TweenInfo.new(0.15), { TextColor3 = C.text }):Play()
             end
         end)
         sidebarBtn.MouseLeave:Connect(function()
             if self._CurrentTab ~= tabObj then
-                TweenService:Create(iconText, TweenInfo.new(0.15), {TextColor3 = C.iconIdle}):Play()
+                TweenService:Create(iconText, TweenInfo.new(0.15), { TextColor3 = C.iconIdle }):Play()
             end
         end)
-        sidebarBtn.MouseButton1Click:Connect(function() self:SelectTab(tabObj) end)
+        sidebarBtn.MouseButton1Click:Connect(function()
+            self:SelectTab(tabObj)
+        end)
 
-        table.insert(self._SidebarButtons, {btn = sidebarBtn, bar = activeBar, icon = iconText, tab = tabObj})
+        table.insert(self._SidebarButtons, {
+            btn = sidebarBtn, bar = activeBar, icon = iconText, tab = tabObj,
+        })
+
         tabObj._SidebarBtn = sidebarBtn
         tabObj._SidebarBar = activeBar
         tabObj._SidebarIcon = iconText
     end
 
-    tabBtn.MouseButton1Click:Connect(function() self:SelectTab(tabObj) end)
+    tabBtn.MouseButton1Click:Connect(function()
+        self:SelectTab(tabObj)
+    end)
 
     table.insert(self._Tabs, tabObj)
-    table.insert(self._TabButtons, {btn = tabBtn, label = tabLabel, tab = tabObj})
+    table.insert(self._TabButtons, { btn = tabBtn, label = tabLabel, tab = tabObj })
 
     if #self._Tabs == 1 then
         self:SelectTab(tabObj)
     end
+
     return tabObj
 end
 
@@ -1223,20 +1254,20 @@ function Window:SelectTab(tabObj)
     for _, entry in ipairs(self._TabButtons) do
         if entry.tab == tabObj then
             entry.btn.BackgroundColor3 = C.tabActive
-            TweenService:Create(entry.btn, TweenInfo.new(0.15), {BackgroundTransparency = 0}):Play()
+            TweenService:Create(entry.btn, TweenInfo.new(0.15), { BackgroundTransparency = 0 }):Play()
             entry.label.TextColor3 = C.text
         else
-            TweenService:Create(entry.btn, TweenInfo.new(0.15), {BackgroundTransparency = 0.5}):Play()
+            TweenService:Create(entry.btn, TweenInfo.new(0.15), { BackgroundTransparency = 0.5 }):Play()
             entry.label.TextColor3 = C.textDim
         end
     end
     for _, sb in ipairs(self._SidebarButtons) do
         if sb.tab == tabObj then
             sb.bar.Visible = true
-            TweenService:Create(sb.icon, TweenInfo.new(0.15), {TextColor3 = C.iconActive}):Play()
+            TweenService:Create(sb.icon, TweenInfo.new(0.15), { TextColor3 = C.iconActive }):Play()
         else
             sb.bar.Visible = false
-            TweenService:Create(sb.icon, TweenInfo.new(0.15), {TextColor3 = C.iconIdle}):Play()
+            TweenService:Create(sb.icon, TweenInfo.new(0.15), { TextColor3 = C.iconIdle }):Play()
         end
     end
 end
@@ -1256,14 +1287,14 @@ function Window:Open()
     self._Main.BackgroundTransparency = 0
 
     local tw = TweenService:Create(self._Main, TweenInfo.new(0.45, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-        Size = UDim2.fromOffset(MAIN_W, MAIN_H)})
+        Size = UDim2.fromOffset(MAIN_W, MAIN_H),
+    })
     tw:Play()
 
     self._FloatHint.Text = "点击收起"
-    TweenService:Create(self._FloatHint, TweenInfo.new(0.25), {TextColor3 = C.success}):Play()
-    TweenService:Create(self._IndicatorDot, TweenInfo.new(0.25), {BackgroundColor3 = C.success}):Play()
-    TweenService:Create(self._IndicatorPulse, TweenInfo.new(0.25), {BackgroundColor3 = C.success}):Play()
-    TweenService:Create(self._FloatIcon, TweenInfo.new(0.25), {BackgroundColor3 = C.success}):Play()
+    TweenService:Create(self._FloatHint, TweenInfo.new(0.25), { TextColor3 = C.success }):Play()
+    TweenService:Create(self._IndicatorDot, TweenInfo.new(0.25), { BackgroundColor3 = C.success }):Play()
+    TweenService:Create(self._IndicatorPulse, TweenInfo.new(0.25), { BackgroundColor3 = C.success }):Play()
 
     tw.Completed:Connect(function() self._Animating = false end)
 end
@@ -1280,14 +1311,14 @@ function Window:Close()
     end
 
     local tw = TweenService:Create(self._Main, TweenInfo.new(0.38, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
-        Size = UDim2.fromOffset(80, 40)})
+        Size = UDim2.fromOffset(80, 40),
+    })
     tw:Play()
 
     self._FloatHint.Text = "点击展开"
-    TweenService:Create(self._FloatHint, TweenInfo.new(0.25), {TextColor3 = C.textDim}):Play()
-    TweenService:Create(self._IndicatorDot, TweenInfo.new(0.25), {BackgroundColor3 = C.accent}):Play()
-    TweenService:Create(self._IndicatorPulse, TweenInfo.new(0.25), {BackgroundColor3 = C.accent}):Play()
-    TweenService:Create(self._FloatIcon, TweenInfo.new(0.25), {BackgroundColor3 = C.accent}):Play()
+    TweenService:Create(self._FloatHint, TweenInfo.new(0.25), { TextColor3 = C.textDim }):Play()
+    TweenService:Create(self._IndicatorDot, TweenInfo.new(0.25), { BackgroundColor3 = C.accent }):Play()
+    TweenService:Create(self._IndicatorPulse, TweenInfo.new(0.25), { BackgroundColor3 = C.accent }):Play()
 
     tw.Completed:Connect(function()
         self._MainHolder.Visible = false
@@ -1296,29 +1327,10 @@ function Window:Close()
 end
 
 function Window:Toggle()
-    if self._IsOpen then self:Close() else self:Open() end
-end
-
-function Window:SetFloatIcon(url)
-    local iconFrame = self._FloatIcon
-    for _, child in ipairs(iconFrame:GetChildren()) do
-        if child:IsA("ImageLabel") or child:IsA("TextLabel") then child:Destroy() end
-    end
-    if url and url ~= "" then
-        n("ImageLabel", {
-            BackgroundTransparency = 1,
-            Size = UDim2.fromScale(0.75, 0.75),
-            Position = UDim2.fromScale(0.125, 0.125),
-            Image = url, ScaleType = Enum.ScaleType.Fit,
-            Parent = iconFrame,
-        })
+    if self._IsOpen then
+        self:Close()
     else
-        n("TextLabel", {
-            BackgroundTransparency = 1, Size = UDim2.fromScale(1,1),
-            Text = "S", TextColor3 = Color3.new(1,1,1),
-            Font = Enum.Font.Montserrat, TextSize = 16,
-            Parent = iconFrame,
-        })
+        self:Open()
     end
 end
 
