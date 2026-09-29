@@ -5,13 +5,13 @@
   版本 : 1.0.0
   语法 : 兼容 Lua 5.1 / Roblox Luau
   特性 :
-    · 悬浮球（图片可自定义，点击开关主界面，可拖动）
-    · 主侧边栏 + 副侧边栏（一个主栏可挂多个副栏）
+    · 悬浮球：纯黑圆盘 + 白色 Open/Close 文字（随主界面状态切换，可拖动）
+    · 主侧边栏 + 副侧边栏（一个主栏可挂多个副栏，顶部标签条）
     · 左上角玩家头像 + 玩家名字（均可自定义）
-    · 内置图标库，也可用 rbxassetid 覆盖
+    · 内置矢量图标库（纯 Frame/UIStroke 绘制，无字体与 emoji 依赖），也可用 rbxassetid 覆盖
     · 开关 / 滑块 / 下拉 / 按钮 / 标签 / 分割线 / 按键绑定 / 输入框
     · 卡片分栏布局、实时搜索、悬浮提示、通知中心
-    · 自适应分辨率（按视口自动缩放）
+    · 自适应分辨率（主界面大小随设备视口动态计算，始终完整显示）
 ================================================================================
 ]]
 
@@ -56,42 +56,18 @@ Nova.Theme = {
 }
 
 --==============================================================================
--- 内置图标库（用几何符号，避免彩色 emoji；可整体替换为 rbxassetid）
+-- 内置矢量图标注册表
+--   全部用 Frame / UIStroke 现场绘制，不依赖字体、没有 emoji、任何分辨率都清晰
+--   用法：icon(parent, "shield", 18, color)  也可传 "rbxassetid://xxx" 用图片
 --==============================================================================
 Nova.Icons = {
-	default       = "◈",
-	shield        = "◈",
-	eye           = "◎",
-	target        = "⊙",
-	hand          = "✦",
-	cursor        = "✥",
-	folder        = "▤",
-	settings      = "⚙",
-	sliders       = "☰",
-	layers        = "▦",
-	search        = "⌕",
-	close         = "✕",
-	minimize      = "－",
-	check         = "✓",
-	chevron       = "⌄",
-	chevronRight  = "›",
-	dot           = "•",
-	star          = "★",
-	bolt          = "⌁",
-	lock          = "▣",
-	user          = "◉",
-	code          = "⌘",
-	link          = "⇄",
-	refresh       = "↻",
-	clock         = "◷",
-	flag          = "⚑",
-	plus          = "＋",
-	palette       = "◐",
-	info          = "◍",
-	warn          = "△",
-	power         = "⏻",
-	home          = "⌂",
-	grid          = "▩",
+	default = true, shield = true, eye = true, target = true, hand = true,
+	cursor = true, folder = true, settings = true, sliders = true, layers = true,
+	search = true, close = true, minimize = true, check = true, chevron = true,
+	chevronRight = true, dot = true, more = true, star = true, bolt = true,
+	lock = true, user = true, code = true, link = true, refresh = true,
+	clock = true, flag = true, plus = true, palette = true, info = true,
+	warn = true, power = true, home = true, grid = true,
 }
 
 --==============================================================================
@@ -109,10 +85,10 @@ Nova.Defaults = {
 	Accent2        = Color3.fromRGB(255, 130, 76),
 	ToggleKey      = Enum.KeyCode.RightShift,
 	Columns        = 2,
-	Width          = 930,
-	Height         = 585,
-	MinScale       = 0.62,
-	MaxScale       = 1.15,
+	Width          = 1060,                 -- 基准宽（实际大小会按设备视口自适应）
+	Height         = 660,                  -- 基准高
+	MinScale       = 0.60,
+	MaxScale       = 1.40,
 	StartOpen      = true,
 }
 
@@ -205,35 +181,250 @@ local function isAsset(v)
 	return v:sub(1, 10) == "rbxassetid" or v:sub(1, 8) == "rbxthumb"
 end
 
--- 渲染图标：图标名 -> 几何字形；rbxassetid/rbxthumb -> 图片
+-- 在 24×24 逻辑坐标里绘制矢量图标：只用 Frame + UICorner + UIStroke
+-- 坐标全部 ×k 缩放到目标尺寸，因此任意大小都清晰、不糊、不依赖字体
+local IconPainters = setmetatable({}, { __mode = "k" }) -- 实例 -> 可着色部件（弱键，自动回收）
+
+local function vIcon(parent, name, size, color, props)
+	size = size or 16
+	color = color or Nova.Theme.Text
+	local k = size / 24
+
+	local box = create("Frame", {
+		Name = "Icon",
+		BackgroundTransparency = 1,
+		ClipsDescendants = false,
+		Size = UDim2.fromOffset(size, size),
+		Parent = parent,
+	})
+	local paints, z = {}, 0
+
+	local function bar(x, y, w, h, r, rot, alpha)
+		z = z + 1
+		local f = create("Frame", {
+			BackgroundColor3 = color,
+			BackgroundTransparency = alpha or 0,
+			Size = UDim2.fromOffset(w * k, h * k),
+			Position = UDim2.fromOffset(x * k, y * k),
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			BorderSizePixel = 0,
+			ZIndex = z,
+			Parent = box,
+		})
+		corner(f, (r or 0) * k)
+		if rot then f.Rotation = rot end
+		paints[#paints + 1] = { kind = "bg", inst = f }
+		return f
+	end
+
+	local function outline(x, y, w, h, r, thick, alpha)
+		z = z + 1
+		local f = create("Frame", {
+			BackgroundTransparency = 1,
+			Size = UDim2.fromOffset(w * k, h * k),
+			Position = UDim2.fromOffset(x * k, y * k),
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			BorderSizePixel = 0,
+			ZIndex = z,
+			Parent = box,
+		})
+		corner(f, (r or 0) * k)
+		local s = create("UIStroke", {
+			Color = color,
+			Thickness = (thick or 2) * k,
+			Transparency = alpha or 0,
+			ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+			Parent = f,
+		})
+		paints[#paints + 1] = { kind = "stroke", inst = s }
+		return f
+	end
+
+	local function circle(x, y, d, alpha)
+		return bar(x, y, d, d, d / 2, 0, alpha)
+	end
+
+	local function draw(n)
+		if n == "close" then
+			bar(12, 12, 14, 2.4, 1.2, 45)
+			bar(12, 12, 14, 2.4, 1.2, -45)
+		elseif n == "minimize" then
+			bar(12, 12, 13, 2.4, 1.2)
+		elseif n == "check" then
+			bar(9, 14.4, 6.4, 2.6, 1.3, 45)
+			bar(14.6, 11.9, 11.4, 2.6, 1.3, -50)
+		elseif n == "plus" then
+			bar(12, 12, 14, 2.4, 1.2)
+			bar(12, 12, 2.4, 14, 1.2)
+		elseif n == "chevron" then
+			bar(9.5, 12.4, 7, 2.4, 1.2, 45)
+			bar(14.5, 12.4, 7, 2.4, 1.2, -45)
+		elseif n == "chevronRight" then
+			bar(12.4, 9.5, 7, 2.4, 1.2, 45)
+			bar(12.4, 14.5, 7, 2.4, 1.2, -45)
+		elseif n == "dot" then
+			circle(12, 12, 5)
+		elseif n == "more" then
+			circle(7, 12, 3.4)
+			circle(12, 12, 3.4)
+			circle(17, 12, 3.4)
+		elseif n == "search" then
+			outline(11, 11, 13.5, 13.5, 6.75, 2.2)
+			bar(16.8, 16.8, 6.4, 2.4, 1.2, 45)
+		elseif n == "grid" then
+			bar(8, 8, 6, 6, 1.8)
+			bar(16, 8, 6, 6, 1.8)
+			bar(8, 16, 6, 6, 1.8)
+			bar(16, 16, 6, 6, 1.8)
+		elseif n == "sliders" then
+			bar(12, 6.5, 16, 2.1, 1.05, 0, 0.5)
+			bar(8, 6.5, 4.6, 4.6, 2.3)
+			bar(12, 12, 16, 2.1, 1.05, 0, 0.5)
+			bar(15.5, 12, 4.6, 4.6, 2.3)
+			bar(12, 17.5, 16, 2.1, 1.05, 0, 0.5)
+			bar(9.5, 17.5, 4.6, 4.6, 2.3)
+		elseif n == "settings" then
+			outline(12, 12, 13, 13, 6.5, 2.4)
+			bar(12, 4.6, 3, 4.4, 1.5)
+			bar(12, 19.4, 3, 4.4, 1.5)
+			bar(4.6, 12, 4.4, 3, 1.5)
+			bar(19.4, 12, 4.4, 3, 1.5)
+			circle(12, 12, 3.2)
+		elseif n == "layers" then
+			bar(12, 6.5, 11, 11, 1.8, 45, 0.34)
+			bar(12, 12, 11, 11, 1.8, 45, 0.6)
+			bar(12, 17.5, 11, 11, 1.8, 45)
+		elseif n == "folder" then
+			bar(8.6, 7.4, 8, 3.4, 1.5)
+			bar(12, 14, 16.5, 11.5, 2.4)
+		elseif n == "user" then
+			circle(12, 8.4, 7.6)
+			bar(12, 18.6, 15.4, 9, 4.5)
+		elseif n == "hand" then
+			bar(12, 16.5, 13, 8.4, 2.8)
+			bar(8.5, 9.5, 2.6, 9, 1.3)
+			bar(12, 8, 2.6, 12, 1.3)
+			bar(15.5, 9.5, 2.6, 9, 1.3)
+			bar(5.6, 14, 2.6, 6.4, 1.3, -32)
+		elseif n == "cursor" then
+			bar(10, 10, 3.2, 14.5, 1.6)
+			bar(15.2, 16.2, 7.4, 3.2, 1.6, 48)
+		elseif n == "shield" then
+			bar(12, 9.6, 15, 10.4, 3, 0)
+			bar(12, 15, 10.7, 10.7, 1.7, 45)
+		elseif n == "eye" then
+			outline(12, 12, 18, 11, 5.5, 2)
+			circle(12, 12, 5.6)
+		elseif n == "target" then
+			outline(12, 12, 17.5, 17.5, 8.75, 2.1)
+			circle(12, 12, 4.2)
+		elseif n == "star" then
+			bar(12, 12, 3, 17, 1.5)
+			bar(12, 12, 17, 3, 1.5)
+			circle(12, 12, 3)
+		elseif n == "bolt" then
+			bar(13.4, 8.6, 3.6, 8.4, 1.3, 18)
+			bar(10.6, 15.4, 3.6, 8.4, 1.3, 18)
+			bar(12, 12, 4.2, 2.6, 1.3, -18)
+		elseif n == "lock" then
+			outline(12, 9, 9.4, 9.4, 4.7, 2.3)
+			bar(12, 15.4, 13.6, 10.4, 2.4)
+		elseif n == "warn" then
+			bar(12, 11, 2.6, 9.4, 1.3)
+			circle(12, 18.6, 2.6)
+		elseif n == "info" then
+			outline(12, 12, 16.5, 16.5, 8.25, 2.1)
+			circle(12, 8.2, 2.4)
+			bar(12, 14.6, 2.4, 7, 1.2)
+		elseif n == "clock" then
+			outline(12, 12, 17, 17, 8.5, 2.1)
+			bar(12, 9.6, 2.1, 6, 1.05)
+			bar(14.4, 13.6, 5.4, 2.1, 1.05, 45)
+		elseif n == "refresh" then
+			outline(12, 12, 15, 15, 7.5, 2.2)
+			bar(17.2, 6.4, 4, 4, 1.4, 45)
+		elseif n == "link" then
+			bar(7.6, 12, 8.4, 6, 3, 0, 0.35)
+			bar(16.4, 12, 8.4, 6, 3, 0, 0.35)
+			bar(12, 12, 7.6, 2.4, 1.2)
+		elseif n == "code" then
+			bar(8.2, 12, 6, 2.4, 1.2, 45)
+			bar(8.2, 12, 6, 2.4, 1.2, -45)
+			bar(15.8, 12, 6, 2.4, 1.2, 45)
+			bar(15.8, 12, 6, 2.4, 1.2, -45)
+			bar(12, 12, 2.2, 7, 1.1)
+		elseif n == "flag" then
+			bar(7, 12.5, 2.4, 17, 1.2)
+			bar(13.6, 9, 9, 8, 1.7, -8)
+		elseif n == "home" then
+			bar(9.2, 9.8, 7, 2.4, 1.2, 45)
+			bar(14.8, 9.8, 7, 2.4, 1.2, -45)
+			bar(12, 16.4, 13, 8.4, 1.6)
+		elseif n == "power" then
+			outline(12, 12.6, 15, 15, 7.5, 2.3)
+			bar(12, 7.6, 2.4, 7.6, 1.2)
+		elseif n == "palette" then
+			outline(12, 12, 17, 17, 8.5, 2.1)
+			circle(9, 9.8, 2.6)
+			circle(14.4, 9.4, 2.6)
+			circle(8.6, 14.6, 2.6)
+		else -- default：菱形
+			bar(12, 12, 13, 13, 3, 45)
+		end
+	end
+
+	draw(Nova.Icons[name] and name or "default")
+
+	IconPainters[box] = paints
+
+	if props then
+		for kk, vv in pairs(props) do
+			if kk ~= "Size" then box[kk] = vv end -- 矢量图标尺寸由 size 决定
+		end
+	end
+	return box
+end
+
+-- 渲染图标：rbxassetid/rbxthumb -> 图片；其它为矢量图标名（未知则用 default）
 local function icon(parent, name, size, color, props)
-	local glyph = Nova.Icons[name] or name or Nova.Icons.default
-	local inst
-	if isAsset(glyph) then
-		inst = create("ImageLabel", {
-			Image = glyph,
+	size = size or 16
+	if isAsset(name) then
+		local img = create("ImageLabel", {
+			Name = "Icon",
+			Image = name,
 			BackgroundTransparency = 1,
 			Size = UDim2.fromOffset(size, size),
 			ImageColor3 = color or Nova.Theme.Text,
 			Parent = parent,
 		})
-	else
-		inst = create("TextLabel", {
-			Text = glyph,
-			BackgroundTransparency = 1,
-			Font = Enum.Font.GothamMedium,
-			TextColor3 = color or Nova.Theme.Text,
-			TextSize = math.floor((size or 16) * 1.05),
-			Size = UDim2.fromOffset((size or 16) + 6, size or 16),
-			TextXAlignment = Enum.TextXAlignment.Center,
-			TextYAlignment = Enum.TextYAlignment.Center,
-			Parent = parent,
-		})
+		if props then
+			for kk, vv in pairs(props) do img[kk] = vv end
+		end
+		return img
 	end
-	if props then
-		for k, v in pairs(props) do inst[k] = v end
+	return vIcon(parent, name, size, color, props)
+end
+
+-- 统一给图标上色（矢量 / 文本 / 图片通用）
+local function tint(ic, c)
+	if not ic then return end
+	local paints = IconPainters[ic]
+	if paints then
+		for i = 1, #paints do
+			local p = paints[i]
+			if p.kind == "bg" then
+				p.inst.BackgroundColor3 = c
+			else
+				p.inst.Color = c
+			end
+		end
+		return
 	end
-	return inst
+	if ic:IsA("TextLabel") then
+		ic.TextColor3 = c
+	elseif ic:IsA("ImageLabel") then
+		ic.ImageColor3 = c
+	end
 end
 
 local function findGuiParent()
@@ -389,11 +580,11 @@ end
 -- 悬浮球
 --==============================================================================
 function Nova:_BuildFloating()
-	local SIZE = 54
+	local SIZE = 58
 
 	self.Floating = create("CanvasGroup", {
 		Name = "Floating",
-		BackgroundColor3 = self.Theme.Accent,
+		BackgroundColor3 = Color3.fromRGB(0, 0, 0), -- 纯黑底
 		Size = UDim2.fromOffset(SIZE, SIZE),
 		Position = UDim2.new(1, -(SIZE + 26), 0.5, -SIZE / 2),
 		GroupTransparency = 0,
@@ -401,20 +592,19 @@ function Nova:_BuildFloating()
 		Parent = self.Root,
 	})
 	corner(self.Floating, SIZE / 2)
-	gradient(self.Floating, self.Theme.Accent, self.Theme.Accent2, 45)
-	stroke(self.Floating, self.Theme.Stroke, 1, 0.82)
+	stroke(self.Floating, Color3.fromRGB(255, 255, 255), 1.4, 0.72)
 
-	-- 外发光
+	-- 极淡的外发光（白色描边光晕）
 	self.FloatingGlow = create("Frame", {
 		Name = "Glow",
-		BackgroundColor3 = self.Theme.Accent,
-		BackgroundTransparency = 0.86,
-		Size = UDim2.fromOffset(SIZE + 14, SIZE + 14),
-		Position = UDim2.fromOffset(-7, -7),
+		BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+		BackgroundTransparency = 0.93,
+		Size = UDim2.fromOffset(SIZE + 12, SIZE + 12),
+		Position = UDim2.fromOffset(-6, -6),
 		ZIndex = 0,
 		Parent = self.Floating,
 	})
-	corner(self.FloatingGlow, (SIZE + 14) / 2)
+	corner(self.FloatingGlow, (SIZE + 12) / 2)
 
 	self.FloatingIconHolder = create("Frame", {
 		Name = "IconHolder",
@@ -428,11 +618,11 @@ function Nova:_BuildFloating()
 	-- 悬停反馈
 	self.Floating.MouseEnter:Connect(function()
 		tween(self.Floating, { Size = UDim2.fromOffset(SIZE + 5, SIZE + 5) }, 0.18, Enum.EasingStyle.Back)
-		tween(self.FloatingGlow, { BackgroundTransparency = 0.72 }, 0.18)
+		tween(self.FloatingGlow, { BackgroundTransparency = 0.86 }, 0.18)
 	end)
 	self.Floating.MouseLeave:Connect(function()
 		tween(self.Floating, { Size = UDim2.fromOffset(SIZE, SIZE) }, 0.18, Enum.EasingStyle.Back)
-		tween(self.FloatingGlow, { BackgroundTransparency = 0.86 }, 0.18)
+		tween(self.FloatingGlow, { BackgroundTransparency = 0.93 }, 0.18)
 	end)
 
 	-- 拖动 + 点击
@@ -474,37 +664,47 @@ function Nova:_RenderFloatingIcon()
 	local holder = self.FloatingIconHolder
 	local old = holder:FindFirstChild("I")
 	if old then old:Destroy() end
+	self.FloatingLabel = nil
 
 	local cfg = self.Config.FloatingIcon
+
+	-- 自定义图片：仍显示图片，不显示文字
 	if isAsset(cfg) then
-		local img = create("ImageLabel", {
+		create("ImageLabel", {
 			Name = "I",
 			Image = cfg,
 			BackgroundTransparency = 1,
-			Size = UDim2.fromOffset(26, 26),
+			Size = UDim2.fromOffset(30, 30),
 			AnchorPoint = Vector2.new(0.5, 0.5),
 			Position = UDim2.fromScale(0.5, 0.5),
 			ZIndex = 3,
 			Parent = holder,
 		})
-		return img
+		return
 	end
 
-	local glyph = Nova.Icons[cfg] or Nova.Icons.default
+	-- 默认：纯白 Open / Close 文字（随主界面开关状态切换）
 	local lbl = create("TextLabel", {
 		Name = "I",
-		Text = glyph,
+		Text = self._visible and "Close" or "Open",
 		BackgroundTransparency = 1,
 		Font = Enum.Font.GothamBold,
 		TextColor3 = Color3.fromRGB(255, 255, 255),
-		TextSize = 24,
+		TextSize = 15,
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.fromScale(0.5, 0.5),
 		Size = UDim2.fromScale(1, 1),
 		ZIndex = 3,
 		Parent = holder,
 	})
+	self.FloatingLabel = lbl
 	return lbl
+end
+
+function Nova:_UpdateFloatingLabel()
+	if self.FloatingLabel then
+		self.FloatingLabel.Text = self._visible and "Close" or "Open"
+	end
 end
 
 --==============================================================================
@@ -677,11 +877,11 @@ function Nova:_BuildWindow()
 		})
 		b.MouseEnter:Connect(function()
 			tween(b, { BackgroundTransparency = 0.9 }, 0.14)
-			if ic:IsA("TextLabel") then ic.TextColor3 = hoverColor or T.Text end
+			tint(ic, hoverColor or T.Text)
 		end)
 		b.MouseLeave:Connect(function()
 			tween(b, { BackgroundTransparency = 1 }, 0.14)
-			if ic:IsA("TextLabel") then ic.TextColor3 = T.TextDim end
+			tint(ic, T.TextDim)
 		end)
 		return b, ic
 	end
@@ -742,18 +942,21 @@ function Nova:_BuildWindow()
 	-- 副侧边栏（横向标签条）
 	local tabBar = create("Frame", {
 		Name = "TabBar",
-		BackgroundTransparency = 1,
-		Size = UDim2.new(1, 0, 0, 42),
-		Position = UDim2.fromOffset(0, 66),
+		BackgroundColor3 = T.Panel,
+		BackgroundTransparency = 0.55,
+		Size = UDim2.new(1, -28, 0, 50),
+		Position = UDim2.fromOffset(14, 68),
 		ZIndex = 12,
 		Parent = main,
 	})
+	corner(tabBar, 12)
+	stroke(tabBar, T.Stroke, 1, 0.94)
 	self.TabScroll = create("ScrollingFrame", {
 		Name = "TabScroll",
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
-		Size = UDim2.new(1, -28, 1, 0),
-		Position = UDim2.fromOffset(14, 0),
+		Size = UDim2.new(1, -16, 1, 0),
+		Position = UDim2.fromOffset(8, 0),
 		CanvasSize = UDim2.fromOffset(0, 0),
 		AutomaticCanvasSize = Enum.AutomaticSize.X,
 		ScrollingDirection = Enum.ScrollingDirection.X,
@@ -762,15 +965,15 @@ function Nova:_BuildWindow()
 		ZIndex = 12,
 		Parent = tabBar,
 	})
-	list(self.TabScroll, Enum.FillDirection.Horizontal, 6, Enum.HorizontalAlignment.Left, Enum.VerticalAlignment.Center)
+	list(self.TabScroll, Enum.FillDirection.Horizontal, 8, Enum.HorizontalAlignment.Left, Enum.VerticalAlignment.Center)
 
 	-- 内容区
 	self.Content = create("ScrollingFrame", {
 		Name = "Content",
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
-		Size = UDim2.new(1, -28, 1, -122),
-		Position = UDim2.fromOffset(14, 112),
+		Size = UDim2.new(1, -28, 1, -138),
+		Position = UDim2.fromOffset(14, 128),
 		CanvasSize = UDim2.fromOffset(0, 0),
 		AutomaticCanvasSize = Enum.AutomaticSize.Y,
 		ScrollingDirection = Enum.ScrollingDirection.Y,
@@ -1117,6 +1320,7 @@ end
 function Nova:Open()
 	if self._visible then return end
 	self._visible = true
+	self:_UpdateFloatingLabel()
 	self.Holder.Visible = true
 	self.Window.GroupTransparency = 1
 	self.Holder.Size = UDim2.fromOffset(self.Config.Width * 0.94, self.Config.Height * 0.94)
@@ -1124,12 +1328,13 @@ function Nova:Open()
 	tween(self.Holder, {
 		Size = UDim2.fromOffset(self.Config.Width, self.Config.Height),
 	}, 0.3, Enum.EasingStyle.Quart)
-	tween(self.Floating, { GroupTransparency = 0.35 }, 0.2)
+	tween(self.Floating, { GroupTransparency = 0 }, 0.2)
 end
 
 function Nova:Close()
 	if not self._visible then return end
 	self._visible = false
+	self:_UpdateFloatingLabel()
 	self:_ClosePopup()
 	tween(self.Window, { GroupTransparency = 1 }, 0.16)
 	tween(self.Holder, {
@@ -1190,10 +1395,19 @@ function Nova:_Viewport()
 	return Vector2.new(1280, 720)
 end
 
+-- 主界面大小完全跟随设备视口动态计算：基准 1560×880 作参考，
+-- 屏幕越大界面越大、越小界面越小，并始终保证完整显示在屏幕内
 function Nova:_ApplyScale()
 	local vp = self:_Viewport()
-	local s = math.min(vp.X / 1920, vp.Y / 1080)
+	local w, h = self.Config.Width, self.Config.Height
+
+	local s = math.min(vp.X / 1560, vp.Y / 880)
 	s = clamp(s, self.Config.MinScale, self.Config.MaxScale)
+
+	-- 兜底：无论什么设备都不允许超出视口
+	local fit = math.min((vp.X - 28) / w, (vp.Y - 28) / h)
+	if fit < s then s = math.max(fit, 0.4) end
+
 	self.Scale = s
 	if self.UIScale then
 		self.UIScale.Scale = s
@@ -1205,11 +1419,14 @@ function Nova:_ClampFloating()
 	if not self.Floating then return end
 	local vp = self:_Viewport()
 	local pos = self.Floating.Position
-	local size = self.Floating.AbsoluteSize
 	local x = pos.X.Scale * vp.X + pos.X.Offset
 	local y = pos.Y.Scale * vp.Y + pos.Y.Offset
-	x = clamp(x, 4, vp.X - 58)
-	y = clamp(y, 4, vp.Y - 58)
+	local w = self.Floating.AbsoluteSize.X
+	local h = self.Floating.AbsoluteSize.Y
+	if w <= 0 then w = 58 end
+	if h <= 0 then h = 58 end
+	x = clamp(x, 4, math.max(4, vp.X - w - 4))
+	y = clamp(y, 4, math.max(4, vp.Y - h - 4))
 	self.Floating.Position = UDim2.fromOffset(x, y)
 end
 
@@ -1315,12 +1532,12 @@ function Nova:Primary(name, iconName)
 	btn.MouseEnter:Connect(function()
 		if self.ActivePrimary == tab then return end
 		tween(btn, { BackgroundTransparency = 0.88 }, 0.14)
-		if ic:IsA("TextLabel") then tween(ic, { TextColor3 = T.Text }, 0.14) end
+		tint(ic, T.Text)
 	end)
 	btn.MouseLeave:Connect(function()
 		if self.ActivePrimary == tab then return end
 		tween(btn, { BackgroundTransparency = 1 }, 0.14)
-		if ic:IsA("TextLabel") then tween(ic, { TextColor3 = T.TextMuted }, 0.14) end
+		tint(ic, T.TextMuted)
 	end)
 	btn.MouseButton1Click:Connect(function()
 		tab:Select()
@@ -1402,30 +1619,30 @@ function PrimaryPane:Secondary(name, iconName)
 		Name = "Secondary_" .. name,
 		Text = "",
 		AutoButtonColor = false,
-		BackgroundColor3 = T.Element,
+		BackgroundColor3 = T.Card,
 		BackgroundTransparency = 1,
-		Size = UDim2.fromOffset(0, 30),
+		Size = UDim2.fromOffset(0, 34),
 		AutomaticSize = Enum.AutomaticSize.X,
 		LayoutOrder = #self.Secondaries + 1,
 		ZIndex = 13,
 		Parent = lib.TabScroll,
 	})
-	corner(btn, 9)
-	padding(btn, 0, 0, 12, 12)
-	list(btn, Enum.FillDirection.Horizontal, 7, Enum.HorizontalAlignment.Center, Enum.VerticalAlignment.Center)
+	corner(btn, 10)
+	padding(btn, 0, 0, 14, 14)
+	list(btn, Enum.FillDirection.Horizontal, 8, Enum.HorizontalAlignment.Center, Enum.VerticalAlignment.Center)
 
-	icon(btn, iconName, 13, T.TextMuted, {
+	local ic = icon(btn, iconName, 14, T.TextMuted, {
 		LayoutOrder = 1,
 		ZIndex = 14,
-		Size = UDim2.fromOffset(13, 13),
 	})
+	pane.Icon = ic
 	local lbl = create("TextLabel", {
 		Text = name,
 		BackgroundTransparency = 1,
 		Font = Enum.Font.GothamMedium,
 		TextColor3 = T.TextMuted,
-		TextSize = 12,
-		Size = UDim2.fromOffset(0, 14),
+		TextSize = 12.5,
+		Size = UDim2.fromOffset(0, 15),
 		AutomaticSize = Enum.AutomaticSize.X,
 		LayoutOrder = 2,
 		ZIndex = 14,
@@ -1450,13 +1667,15 @@ function PrimaryPane:Secondary(name, iconName)
 
 	btn.MouseEnter:Connect(function()
 		if lib.ActiveSecondary == pane then return end
-		tween(btn, { BackgroundTransparency = 0.9 }, 0.14)
+		tween(btn, { BackgroundTransparency = 0.88 }, 0.14)
 		tween(lbl, { TextColor3 = T.Text }, 0.14)
+		tint(ic, T.Text)
 	end)
 	btn.MouseLeave:Connect(function()
 		if lib.ActiveSecondary == pane then return end
 		tween(btn, { BackgroundTransparency = 1 }, 0.14)
 		tween(lbl, { TextColor3 = T.TextMuted }, 0.14)
+		tint(ic, T.TextMuted)
 	end)
 	btn.MouseButton1Click:Connect(function()
 		pane:Select()
@@ -1517,9 +1736,7 @@ function PrimaryPane:Select()
 	if prev then
 		tween(prev.Button, { BackgroundTransparency = 1 }, 0.16)
 		tween(prev.Accent, { BackgroundTransparency = 1, Size = UDim2.new(0, 3, 0, 0) }, 0.16)
-		if prev.Icon:IsA("TextLabel") then
-			tween(prev.Icon, { TextColor3 = T.TextMuted }, 0.16)
-		end
+		tint(prev.Icon, T.TextMuted)
 		for i = 1, #prev.Secondaries do
 			prev.Secondaries[i].Page.Visible = false
 		end
@@ -1528,9 +1745,7 @@ function PrimaryPane:Select()
 	lib.ActivePrimary = self
 	tween(self.Button, { BackgroundColor3 = T.Accent, BackgroundTransparency = 0.86 }, 0.18)
 	tween(self.Accent, { BackgroundTransparency = 0, Size = UDim2.new(0, 3, 0, 18) }, 0.22, Enum.EasingStyle.Quint)
-	if self.Icon:IsA("TextLabel") then
-		tween(self.Icon, { TextColor3 = T.Text }, 0.16)
-	end
+	tint(self.Icon, T.Text)
 
 	if self.Secondaries[1] then
 		self.Secondaries[1]:Select()
@@ -1570,6 +1785,17 @@ function SecondaryPane:Section(title)
 	})
 	corner(card, 12)
 	stroke(card, T.Stroke, 1, T.StrokeT)
+	-- 极淡的纵向渐变，给卡片一点体积感
+	create("UIGradient", {
+		Color = ColorSequence.new(Color3.fromRGB(255, 255, 255), Color3.fromRGB(255, 255, 255)),
+		Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0.975),
+			NumberSequenceKeypoint.new(0.5, 0.988),
+			NumberSequenceKeypoint.new(1, 0.975),
+		}),
+		Rotation = 90,
+		Parent = card,
+	})
 	padding(card, 14, 14, 14, 14)
 	list(card, Enum.FillDirection.Vertical, 10)
 
@@ -1642,13 +1868,15 @@ function SecondaryPane:Select()
 		tween(prev.Button, { BackgroundTransparency = 1 }, 0.16)
 		tween(prev.Underline, { BackgroundTransparency = 1 }, 0.16)
 		tween(prev.Label, { TextColor3 = T.TextMuted }, 0.16)
+		tint(prev.Icon, T.TextMuted)
 		prev.Page.Visible = false
 	end
 
 	lib.ActiveSecondary = self
-	tween(self.Button, { BackgroundColor3 = T.Card, BackgroundTransparency = 0.25 }, 0.18)
+	tween(self.Button, { BackgroundColor3 = T.Card, BackgroundTransparency = 0.15 }, 0.18)
 	tween(self.Underline, { BackgroundTransparency = 0 }, 0.18)
 	tween(self.Label, { TextColor3 = T.Text }, 0.18)
+	tint(self.Icon, T.Accent)
 	self.Page.Visible = true
 
 	lib.Content.CanvasPosition = Vector2.new(0, 0)
@@ -1790,23 +2018,21 @@ function Section:Toggle(cfg)
 			AutoButtonColor = false,
 			BackgroundTransparency = 1,
 			Size = UDim2.fromOffset(26, 26),
-			Position = UDim2.new(1, -112, 0.5, 0),
+			Position = UDim2.new(1, -114, 0.5, 0),
 			AnchorPoint = Vector2.new(1, 0.5),
 			ZIndex = 16,
 			Parent = row,
 		})
-		menuIcon = icon(mb, "dot", 14, T.TextMuted, {
+		menuIcon = icon(mb, "more", 15, T.TextMuted, {
 			AnchorPoint = Vector2.new(0.5, 0.5),
 			Position = UDim2.fromScale(0.5, 0.5),
 			ZIndex = 17,
-			Size = UDim2.fromScale(1, 1),
 		})
-		menuIcon.Text = "•••"
 		mb.MouseEnter:Connect(function()
-			tween(menuIcon, { TextColor3 = T.Text }, 0.12)
+			tint(menuIcon, T.Text)
 		end)
 		mb.MouseLeave:Connect(function()
-			tween(menuIcon, { TextColor3 = T.TextMuted }, 0.12)
+			tint(menuIcon, T.TextMuted)
 		end)
 		mb.MouseButton1Click:Connect(function()
 			lib:_Popup(mb, 170, cfg.Menu)
@@ -1818,13 +2044,14 @@ function Section:Toggle(cfg)
 		Text = "",
 		AutoButtonColor = false,
 		BackgroundColor3 = T.Element,
-		Size = UDim2.fromOffset(42, 24),
+		Size = UDim2.fromOffset(46, 26),
 		Position = UDim2.new(1, 0, 0.5, 0),
 		AnchorPoint = Vector2.new(1, 0.5),
 		ZIndex = 16,
 		Parent = row,
 	})
-	corner(switch, 12)
+	corner(switch, 13)
+	stroke(switch, T.Stroke, 1, 0.9)
 	local swGrad = create("UIGradient", {
 		Color = ColorSequence.new(T.Accent, T.Accent2),
 		Rotation = 0,
@@ -1834,13 +2061,13 @@ function Section:Toggle(cfg)
 	local knob = create("Frame", {
 		Name = "Knob",
 		BackgroundColor3 = Color3.fromRGB(255, 255, 255),
-		BackgroundTransparency = 0.25,
-		Size = UDim2.fromOffset(18, 18),
+		BackgroundTransparency = 0.15,
+		Size = UDim2.fromOffset(20, 20),
 		Position = UDim2.fromOffset(3, 3),
 		ZIndex = 17,
 		Parent = switch,
 	})
-	corner(knob, 9)
+	corner(knob, 10)
 
 	local obj = {}
 	obj.Value = cfg.Default == true
@@ -1853,8 +2080,8 @@ function Section:Toggle(cfg)
 	function obj:Set(v, fire)
 		self.Value = v and true or false
 		tween(knob, {
-			Position = self.Value and UDim2.fromOffset(21, 3) or UDim2.fromOffset(3, 3),
-			BackgroundTransparency = self.Value and 0 or 0.25,
+			Position = self.Value and UDim2.fromOffset(23, 3) or UDim2.fromOffset(3, 3),
+			BackgroundTransparency = self.Value and 0 or 0.15,
 		}, 0.18, Enum.EasingStyle.Quart)
 		tween(switch, { BackgroundColor3 = self.Value and T.Accent or T.Element }, 0.18)
 		self.Gradient.Transparency = NumberSequence.new(self.Value and 0 or 1)
@@ -1912,14 +2139,15 @@ function Section:Slider(cfg)
 	local track = create("Frame", {
 		Name = "Track",
 		BackgroundColor3 = T.Element,
-		Size = UDim2.fromOffset(150, 6),
+		Size = UDim2.fromOffset(150, 7),
 		Position = UDim2.new(1, -70, 0.5, 0),
 		AnchorPoint = Vector2.new(1, 0.5),
 		BorderSizePixel = 0,
 		ZIndex = 16,
 		Parent = row,
 	})
-	corner(track, 3)
+	corner(track, 3.5)
+	stroke(track, T.Stroke, 1, 0.92)
 
 	local fill = create("Frame", {
 		Name = "Fill",
@@ -1929,19 +2157,19 @@ function Section:Slider(cfg)
 		ZIndex = 17,
 		Parent = track,
 	})
-	corner(fill, 3)
+	corner(fill, 3.5)
 	gradient(fill, T.Accent, T.Accent2, 0)
 
 	local knob = create("Frame", {
 		Name = "Knob",
 		BackgroundColor3 = Color3.fromRGB(255, 255, 255),
-		Size = UDim2.fromOffset(16, 16),
+		Size = UDim2.fromOffset(17, 17),
 		Position = UDim2.new(0, 0, 0.5, 0),
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		ZIndex = 18,
 		Parent = track,
 	})
-	corner(knob, 8)
+	corner(knob, 8.5)
 	stroke(knob, T.Accent, 2, 0.15)
 
 	local function fmt(v)
@@ -2008,7 +2236,7 @@ function Section:Slider(cfg)
 			or input.UserInputType == Enum.UserInputType.Touch then
 			dragging = true
 			fromInput(input.Position.X)
-			tween(knob, { Size = UDim2.fromOffset(19, 19) }, 0.12, Enum.EasingStyle.Back)
+			tween(knob, { Size = UDim2.fromOffset(20, 20) }, 0.12, Enum.EasingStyle.Back)
 			tween(valueLabel, { TextColor3 = T.Accent }, 0.12)
 		end
 	end)
@@ -2016,7 +2244,7 @@ function Section:Slider(cfg)
 		if input.UserInputType == Enum.UserInputType.MouseButton1
 			or input.UserInputType == Enum.UserInputType.Touch then
 			dragging = false
-			tween(knob, { Size = UDim2.fromOffset(16, 16) }, 0.14, Enum.EasingStyle.Back)
+			tween(knob, { Size = UDim2.fromOffset(17, 17) }, 0.14, Enum.EasingStyle.Back)
 			tween(valueLabel, { TextColor3 = T.TextDim }, 0.14)
 		end
 	end)
@@ -2148,14 +2376,15 @@ function Section:Button(cfg)
 	})
 	corner(btn, 9)
 	local grad = gradient(btn, T.Accent, T.Accent2, 0)
+	local bStroke = stroke(btn, Color3.fromRGB(255, 255, 255), 1, 0.82)
 
 	btn.MouseEnter:Connect(function()
-		grad.Transparency = NumberSequence.new(0.15)
-		tween(btn, { Size = UDim2.fromOffset(102, 31) }, 0.12)
+		grad.Transparency = NumberSequence.new(0.12)
+		tween(bStroke, { Transparency = 0.6 }, 0.12)
 	end)
 	btn.MouseLeave:Connect(function()
 		grad.Transparency = NumberSequence.new(0)
-		tween(btn, { Size = UDim2.fromOffset(100, 30) }, 0.12)
+		tween(bStroke, { Transparency = 0.82 }, 0.12)
 	end)
 	btn.MouseButton1Click:Connect(function()
 		if cfg.Callback then task.spawn(cfg.Callback) end
@@ -2342,6 +2571,8 @@ function Section:Input(cfg)
 
 	return obj
 end
+
+
 
 --==============================================================================
 -- 演示脚本：整段粘贴到执行器即可运行（库本体 + 示例已合并在本文件）

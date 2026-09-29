@@ -18,7 +18,7 @@ local win = Nova.new({
 	PlayerSubtitle = "Till: 1 mar 2026",
 	Avatar         = nil,                 -- 主界面左上角：玩家头像（nil = 自动取 Roblox 头像）
 
-	FloatingIcon   = nil,                 -- 悬浮球图片（nil = 内置图标；也可 "rbxassetid://xxx"）
+	FloatingIcon   = nil,                 -- 悬浮球：nil = 纯黑 Open/Close 文字；也可 "rbxassetid://xxx" 用图片
 	Accent         = Color3.fromRGB(255, 62, 92),
 	Accent2        = Color3.fromRGB(255, 130, 76),
 	ToggleKey      = Enum.KeyCode.RightShift,
