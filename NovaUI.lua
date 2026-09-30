@@ -2,11 +2,11 @@
 ================================================================================
   Nova UI  ·  现代化 Roblox UI 库
 --------------------------------------------------------------------------------
-  版本 : 1.2.0
+  版本 : 1.3.0
   语法 : 兼容 Lua 5.1 / Roblox Luau
   特性 :
     · 黑白配色，无彩色渐变、无外发光，边缘干净
-    · 悬浮窗：纯黑胶囊条 + 品牌徽标 + 品牌名（默认 Lev Hub）+ 白字 Open/Close，可拖动
+    · 悬浮窗：纯黑胶囊条 + 白描边（深色场景下也不会隐身）+ 品牌名，默认停靠屏幕正中顶端，可拖动
     · 主侧边栏（可上下滑动）+ 副侧边栏（单行标签，带名字，可左右滑动）
     · 左上角玩家头像 + 玩家名字（均可自定义）
     · 内置矢量图标库（纯 Frame/UIStroke 绘制，无字体与 emoji 依赖），也可用 rbxassetid 覆盖
@@ -27,7 +27,7 @@ local LocalPlayer      = Players.LocalPlayer
 
 local Nova = {}
 Nova.__index = Nova
-Nova.Version = "1.2.0"
+Nova.Version = "1.3.0"
 Nova.Flags   = {}
 
 --==============================================================================
@@ -600,13 +600,15 @@ function Nova:_BuildFloating()
 		Name = "Floating",
 		BackgroundColor3 = Color3.fromRGB(0, 0, 0),
 		Size = UDim2.fromOffset(W, H),
-		Position = UDim2.new(1, -(W + 24), 0.5, -H / 2),
+		Position = UDim2.new(0.5, 0, 0, 16),   -- 初始位置：屏幕正中顶端
+		AnchorPoint = Vector2.new(0.5, 0),
 		GroupTransparency = 0,
 		ZIndex = 30,
 		Parent = self.Root,
 	})
 	corner(self.Floating, H / 2)
-	self.FloatingStroke = stroke(self.Floating, Color3.fromRGB(255, 255, 255), 1, 0.8)
+	-- 白色描边给足对比度，纯黑胶囊在深色场景里也不会「隐身」
+	self.FloatingStroke = stroke(self.Floating, Color3.fromRGB(255, 255, 255), 1.5, 0.1)
 
 	-- 极淡的内侧高光，让黑胶囊有一点层次（不是外发光）
 	create("UIGradient", {
@@ -631,10 +633,10 @@ function Nova:_BuildFloating()
 
 	-- 悬停反馈：只提亮描边，不缩放、不发光
 	self.Floating.MouseEnter:Connect(function()
-		tween(self.FloatingStroke, { Transparency = 0.4 }, 0.18)
+		tween(self.FloatingStroke, { Transparency = 0 }, 0.18)
 	end)
 	self.Floating.MouseLeave:Connect(function()
-		tween(self.FloatingStroke, { Transparency = 0.8 }, 0.18)
+		tween(self.FloatingStroke, { Transparency = 0.1 }, 0.18)
 	end)
 
 	-- 拖动 + 点击
@@ -1025,7 +1027,7 @@ function Nova:_BuildWindow()
 	end)
 
 	--==========================================================================
-	-- 副侧边栏：单行标签条（带名字），可左右滑动，高度固定，不会挤压内容
+	-- 副侧边栏：单行标签条（图标 + 名字），可左右滑动，高度固定
 	--==========================================================================
 	local TAB_H = 30
 	local TABBAR_H = TAB_H + 14
@@ -1035,91 +1037,42 @@ function Nova:_BuildWindow()
 	local tabBar = create("Frame", {
 		Name = "TabBar",
 		BackgroundColor3 = T.Panel,
-		BackgroundTransparency = 0.4,
+		BackgroundTransparency = 0.45,
 		Size = UDim2.new(1, -28, 0, TABBAR_H),
 		Position = UDim2.fromOffset(14, TABBAR_Y),
 		ZIndex = 12,
 		Parent = main,
 	})
 	corner(tabBar, 10)
-	stroke(tabBar, T.Stroke, 1, 0.93)
 	self.TabBar = tabBar
+	self.TabH = TAB_H
 
+	-- 单行横向滚动：原生滚轮 / 触摸拖动，只有标签超出宽度时才需要滑动
 	local tabScroll = create("ScrollingFrame", {
 		Name = "TabScroll",
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
-		Size = UDim2.new(1, -14, 1, -14),
-		Position = UDim2.fromOffset(7, 7),
+		Size = UDim2.new(1, -12, 0, TAB_H),
+		Position = UDim2.new(0.5, 0, 0.5, 0),
+		AnchorPoint = Vector2.new(0.5, 0.5),
 		CanvasSize = UDim2.fromOffset(0, 0),
 		AutomaticCanvasSize = Enum.AutomaticSize.X,
 		ScrollingDirection = Enum.ScrollingDirection.X,
 		ScrollBarThickness = 0,
-		ScrollingEnabled = false,
 		ElasticBehavior = Enum.ElasticBehavior.Never,
+		ClipsDescendants = true,
 		ZIndex = 12,
 		Parent = tabBar,
 	})
-	local tabLayout = create("UIListLayout", {
+	self.TabScroll = tabScroll
+	create("UIListLayout", {
 		FillDirection = Enum.FillDirection.Horizontal,
 		HorizontalAlignment = Enum.HorizontalAlignment.Left,
 		VerticalAlignment = Enum.VerticalAlignment.Center,
-		Padding = UDim.new(0, 7),
+		Padding = UDim.new(0, 8),
 		SortOrder = Enum.SortOrder.LayoutOrder,
 		Parent = tabScroll,
 	})
-	self.TabScroll = tabScroll
-	self.TabLayout = tabLayout
-	self.TabHovered = false
-	self.TabPanned = false
-
-	-- 横向滑动：鼠标滚轮（悬停在标签条上）+ 按住拖动
-	local function tabMax()
-		return math.max(0, tabLayout.AbsoluteContentSize.X - tabScroll.AbsoluteSize.X)
-	end
-	local function tabScrollTo(x)
-		tabScroll.CanvasPosition = Vector2.new(clamp(x, 0, tabMax()), 0)
-	end
-	tabBar.MouseEnter:Connect(function() self.TabHovered = true end)
-	tabBar.MouseLeave:Connect(function() self.TabHovered = false end)
-
-	local tabPanning, tabPanMoved = false, false
-	local tabPanX, tabPanStart = 0, 0
-	tabScroll.InputBegan:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseButton1
-			or input.UserInputType == Enum.UserInputType.Touch then
-			tabPanning, tabPanMoved = true, false
-			tabPanX, tabPanStart = input.Position.X, tabScroll.CanvasPosition.X
-		end
-	end)
-	self._conns[#self._conns + 1] = UserInputService.InputChanged:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseWheel then
-			if self.TabHovered and tabMax() > 0 then
-				tabScrollTo(tabScroll.CanvasPosition.X - input.Position.Z * 70)
-			end
-			return
-		end
-		if not tabPanning then return end
-		if input.UserInputType == Enum.UserInputType.MouseMovement
-			or input.UserInputType == Enum.UserInputType.Touch then
-			local dx = input.Position.X - tabPanX
-			if math.abs(dx) > 4 then tabPanMoved = true end
-			if tabPanMoved then tabScrollTo(tabPanStart - dx) end
-		end
-	end)
-	self._conns[#self._conns + 1] = UserInputService.InputEnded:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseButton1
-			or input.UserInputType == Enum.UserInputType.Touch then
-			if tabPanning and tabPanMoved then
-				-- 拖动刚结束时屏蔽一次标签点击，避免误切页
-				self.TabPanned = true
-				task.delay(0.15, function()
-					self.TabPanned = false
-				end)
-			end
-			tabPanning = false
-		end
-	end)
 
 	-- 内容区（位置固定写死，不再依赖标签条实测高度）
 	self.Content = create("ScrollingFrame", {
@@ -1623,14 +1576,17 @@ function Nova:_ClampFloating()
 	if not self.Floating then return end
 	local vp = self:_Viewport()
 	local pos = self.Floating.Position
-	local x = pos.X.Scale * vp.X + pos.X.Offset
-	local y = pos.Y.Scale * vp.Y + pos.Y.Offset
+	local ap = self.Floating.AnchorPoint
 	local w = self.Floating.AbsoluteSize.X
 	local h = self.Floating.AbsoluteSize.Y
-	if w <= 0 then w = 108 end
-	if h <= 0 then h = 38 end
-	x = clamp(x, 4, math.max(4, vp.X - w - 4))
-	y = clamp(y, 4, math.max(4, vp.Y - h - 4))
+	if w <= 0 then w = 176 end
+	if h <= 0 then h = 44 end
+	local x = pos.X.Scale * vp.X + pos.X.Offset
+	local y = pos.Y.Scale * vp.Y + pos.Y.Offset
+	-- 把 AnchorPoint 一起算进来，保证整颗胶囊都留在屏幕内
+	local minX, minY = w * ap.X + 4, h * ap.Y + 4
+	x = clamp(x, minX, math.max(minX, vp.X - w * (1 - ap.X) - 4))
+	y = clamp(y, minY, math.max(minY, vp.Y - h * (1 - ap.Y) - 4))
 	self.Floating.Position = UDim2.fromOffset(x, y)
 end
 
@@ -1776,8 +1732,9 @@ function PrimaryPane:Secondary(name, iconName)
 	local T = lib.Theme
 
 	-- 副标签按钮（宽度按文字实测写死，避免 AutomaticSize 在横向列表里算错）
+	local tabH = lib.TabH or 30
 	local labelW = math.floor(lib:_TextWidth(name, 12, Enum.Font.GothamMedium) + 0.5)
-	local btnW = math.max(72, 12 + 13 + 7 + labelW + 12)
+	local btnW = math.max(70, 11 + 13 + 6 + labelW + 11)
 
 	local btn = create("TextButton", {
 		Name = "Secondary_" .. name,
@@ -1785,13 +1742,13 @@ function PrimaryPane:Secondary(name, iconName)
 		AutoButtonColor = false,
 		BackgroundColor3 = Color3.fromRGB(255, 255, 255),
 		BackgroundTransparency = 1,
-		Size = UDim2.fromOffset(btnW, 30),
+		Size = UDim2.fromOffset(btnW, tabH),
 		LayoutOrder = #self.Secondaries + 1,
 		ZIndex = 13,
 		Parent = lib.TabScroll,
 	})
-	corner(btn, 8)
-	list(btn, Enum.FillDirection.Horizontal, 7, Enum.HorizontalAlignment.Center, Enum.VerticalAlignment.Center)
+	corner(btn, tabH / 2)
+	list(btn, Enum.FillDirection.Horizontal, 6, Enum.HorizontalAlignment.Center, Enum.VerticalAlignment.Center)
 
 	local ic = icon(btn, iconName, 13, T.TextMuted, {
 		LayoutOrder = 1,
@@ -1813,20 +1770,6 @@ function PrimaryPane:Secondary(name, iconName)
 	pane.Button = btn
 	pane.Label = lbl
 
-	local underline = create("Frame", {
-		Name = "Underline",
-		BackgroundColor3 = T.Accent,
-		Size = UDim2.new(1, -14, 0, 2),
-		Position = UDim2.new(0.5, 0, 1, -1),
-		AnchorPoint = Vector2.new(0.5, 1),
-		BorderSizePixel = 0,
-		BackgroundTransparency = 1,
-		ZIndex = 15,
-		Parent = btn,
-	})
-	corner(underline, 1)
-	pane.Underline = underline
-
 	btn.MouseEnter:Connect(function()
 		if lib.ActiveSecondary == pane then return end
 		tween(btn, { BackgroundTransparency = 0.92 }, 0.14)
@@ -1840,7 +1783,6 @@ function PrimaryPane:Secondary(name, iconName)
 		tint(ic, T.TextMuted)
 	end)
 	btn.MouseButton1Click:Connect(function()
-		if lib.TabPanned then return end
 		pane:Select()
 	end)
 
@@ -2029,17 +1971,15 @@ function SecondaryPane:Select()
 	local prev = lib.ActiveSecondary
 	if prev then
 		tween(prev.Button, { BackgroundTransparency = 1 }, 0.16)
-		tween(prev.Underline, { BackgroundTransparency = 1 }, 0.16)
 		tween(prev.Label, { TextColor3 = T.TextMuted }, 0.16)
 		tint(prev.Icon, T.TextMuted)
 		prev.Page.Visible = false
 	end
 
 	lib.ActiveSecondary = self
-	tween(self.Button, { BackgroundColor3 = Color3.fromRGB(255, 255, 255), BackgroundTransparency = 0.9 }, 0.18)
-	tween(self.Underline, { BackgroundTransparency = 0 }, 0.18)
+	tween(self.Button, { BackgroundColor3 = Color3.fromRGB(255, 255, 255), BackgroundTransparency = 0.87 }, 0.18)
 	tween(self.Label, { TextColor3 = T.Text }, 0.18)
-	tint(self.Icon, T.Accent)
+	tint(self.Icon, T.Text)
 	self.Page.Visible = true
 
 	lib.Content.CanvasPosition = Vector2.new(0, 0)
@@ -2208,13 +2148,13 @@ function Section:Toggle(cfg)
 		Text = "",
 		AutoButtonColor = false,
 		BackgroundColor3 = T.Element,
-		Size = UDim2.fromOffset(38, 21),
+		Size = UDim2.fromOffset(40, 22),
 		Position = UDim2.new(1, 0, 0.5, 0),
 		AnchorPoint = Vector2.new(1, 0.5),
 		ZIndex = 16,
 		Parent = row,
 	})
-	corner(switch, 10.5)
+	corner(switch, 11)
 	stroke(switch, T.Stroke, 1, 0.9)
 	local swGrad = create("UIGradient", {
 		Color = ColorSequence.new(T.Accent, T.Accent2),
@@ -2222,16 +2162,17 @@ function Section:Toggle(cfg)
 		Transparency = NumberSequence.new(1),
 		Parent = switch,
 	})
+	-- 推子：16×16，四周各留 3px，左右滑动都不会越出轨道
 	local knob = create("Frame", {
 		Name = "Knob",
 		BackgroundColor3 = Color3.fromRGB(255, 255, 255),
 		BackgroundTransparency = 0.15,
-		Size = UDim2.fromOffset(20, 20),
+		Size = UDim2.fromOffset(16, 16),
 		Position = UDim2.fromOffset(3, 3),
 		ZIndex = 17,
 		Parent = switch,
 	})
-	corner(knob, 10)
+	corner(knob, 8)
 
 	local obj = {}
 	obj.Value = cfg.Default == true
@@ -2244,7 +2185,7 @@ function Section:Toggle(cfg)
 	function obj:Set(v, fire)
 		self.Value = v and true or false
 		tween(knob, {
-			Position = self.Value and UDim2.fromOffset(23, 3) or UDim2.fromOffset(3, 3),
+			Position = self.Value and UDim2.fromOffset(21, 3) or UDim2.fromOffset(3, 3),
 			BackgroundColor3 = self.Value and T.Ink or Color3.fromRGB(255, 255, 255),
 			BackgroundTransparency = self.Value and 0 or 0.12,
 		}, 0.18, Enum.EasingStyle.Quart)
