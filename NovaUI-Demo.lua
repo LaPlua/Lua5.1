@@ -2,12 +2,12 @@
 ================================================================================
   Nova UI  ·  现代化 Roblox UI 库
 --------------------------------------------------------------------------------
-  版本 : 1.1.0
+  版本 : 1.2.0
   语法 : 兼容 Lua 5.1 / Roblox Luau
   特性 :
-    · 黑白配色，无彩色渐变、无发光污渍，边缘干净
-    · 悬浮窗：纯黑胶囊条 + 白字 Open/Close + 状态点（随主界面状态切换，可拖动）
-    · 主侧边栏 + 副侧边栏（副栏标签自动换行，无需横向滚动）
+    · 黑白配色，无彩色渐变、无外发光，边缘干净
+    · 悬浮窗：纯黑胶囊条 + 品牌徽标 + 品牌名（默认 Lev Hub）+ 白字 Open/Close，可拖动
+    · 主侧边栏（可上下滑动）+ 副侧边栏（单行标签，带名字，可左右滑动）
     · 左上角玩家头像 + 玩家名字（均可自定义）
     · 内置矢量图标库（纯 Frame/UIStroke 绘制，无字体与 emoji 依赖），也可用 rbxassetid 覆盖
     · 开关 / 滑块（长方形推子） / 下拉 / 按钮 / 标签 / 分割线 / 按键绑定 / 输入框
@@ -27,7 +27,7 @@ local LocalPlayer      = Players.LocalPlayer
 
 local Nova = {}
 Nova.__index = Nova
-Nova.Version = "1.1.0"
+Nova.Version = "1.2.0"
 Nova.Flags   = {}
 
 --==============================================================================
@@ -79,11 +79,12 @@ Nova.Icons = {
 Nova.Defaults = {
 	Title          = "Nova",
 	Subtitle       = "",
+	Brand          = "Lev Hub",            -- 悬浮胶囊上的品牌名
 	Icon           = nil,                  -- 侧边栏顶部 logo（图片/图标名）
 	PlayerName     = nil,                  -- 默认取显示名
 	PlayerSubtitle = "Premium Edition",
 	Avatar         = nil,                  -- 默认取 Roblox 头像
-	FloatingIcon   = nil,                  -- 悬浮窗图片（填了就不显示 Open/Close 文字）
+	FloatingIcon   = nil,                  -- 悬浮胶囊左侧徽标图片（留空则用品牌首字母）
 	Accent         = Color3.fromRGB(255, 255, 255),   -- 主色：黑白方案，白色为强调
 	Accent2        = Color3.fromRGB(178, 178, 186),   -- 辅色：浅灰（渐变尾）
 	ToggleKey      = Enum.KeyCode.RightShift,
@@ -514,6 +515,33 @@ function Nova:_BuildRoot()
 		Parent = self.Root,
 	})
 
+	-- 悬浮提示层：挂在根节点，主侧边栏滚动裁剪时提示不会被切掉
+	self.Tip = create("Frame", {
+		Name = "Tip",
+		BackgroundColor3 = self.Theme.Card,
+		Size = UDim2.fromOffset(0, 26),
+		BackgroundTransparency = 1,
+		Visible = false,
+		ZIndex = 60,
+		Parent = self.Root,
+	})
+	corner(self.Tip, 7)
+	stroke(self.Tip, self.Theme.Stroke, 1, 0.9)
+	self.TipLabel = create("TextLabel", {
+		Name = "Text",
+		Text = "",
+		BackgroundTransparency = 1,
+		Font = Enum.Font.GothamMedium,
+		TextColor3 = self.Theme.Text,
+		TextSize = 11,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextYAlignment = Enum.TextYAlignment.Center,
+		Size = UDim2.new(1, -18, 1, 0),
+		Position = UDim2.fromOffset(9, 0),
+		ZIndex = 61,
+		Parent = self.Tip,
+	})
+
 	-- 窗口外层（负责阴影与整体缩放定位）
 	self.Holder = create("Frame", {
 		Name = "Holder",
@@ -566,19 +594,31 @@ end
 -- 悬浮窗（黑白胶囊条）
 --==============================================================================
 function Nova:_BuildFloating()
-	local W, H = 108, 38
+	local W, H = 176, 44
 
 	self.Floating = create("CanvasGroup", {
 		Name = "Floating",
 		BackgroundColor3 = Color3.fromRGB(0, 0, 0),
 		Size = UDim2.fromOffset(W, H),
-		Position = UDim2.new(1, -(W + 26), 0.5, -H / 2),
+		Position = UDim2.new(1, -(W + 24), 0.5, -H / 2),
 		GroupTransparency = 0,
 		ZIndex = 30,
 		Parent = self.Root,
 	})
 	corner(self.Floating, H / 2)
-	self.FloatingStroke = stroke(self.Floating, Color3.fromRGB(255, 255, 255), 1, 0.78)
+	self.FloatingStroke = stroke(self.Floating, Color3.fromRGB(255, 255, 255), 1, 0.8)
+
+	-- 极淡的内侧高光，让黑胶囊有一点层次（不是外发光）
+	create("UIGradient", {
+		Color = ColorSequence.new(Color3.fromRGB(255, 255, 255), Color3.fromRGB(255, 255, 255)),
+		Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0.935),
+			NumberSequenceKeypoint.new(0.55, 1),
+			NumberSequenceKeypoint.new(1, 0.975),
+		}),
+		Rotation = 90,
+		Parent = self.Floating,
+	})
 
 	self.FloatingIconHolder = create("Frame", {
 		Name = "IconHolder",
@@ -589,14 +629,12 @@ function Nova:_BuildFloating()
 	})
 	self:_RenderFloatingIcon()
 
-	-- 悬停反馈：只变描边和底色，克制一点
+	-- 悬停反馈：只提亮描边，不缩放、不发光
 	self.Floating.MouseEnter:Connect(function()
-		tween(self.FloatingStroke, { Transparency = 0.3 }, 0.16)
-		tween(self.Floating, { BackgroundColor3 = Color3.fromRGB(22, 22, 24) }, 0.16)
+		tween(self.FloatingStroke, { Transparency = 0.4 }, 0.18)
 	end)
 	self.Floating.MouseLeave:Connect(function()
-		tween(self.FloatingStroke, { Transparency = 0.78 }, 0.16)
-		tween(self.Floating, { BackgroundColor3 = Color3.fromRGB(0, 0, 0) }, 0.16)
+		tween(self.FloatingStroke, { Transparency = 0.8 }, 0.18)
 	end)
 
 	-- 拖动 + 点击
@@ -636,69 +674,99 @@ end
 
 function Nova:_RenderFloatingIcon()
 	local holder = self.FloatingIconHolder
+	if not holder then return end
 	for _, c in ipairs(holder:GetChildren()) do c:Destroy() end
 	self.FloatingLabel = nil
+	self.FloatingMark = nil
 	self.FloatingDot = nil
 
-	local cfg = self.Config.FloatingIcon
+	local brand = self.Config.Brand or "Lev Hub"
+	local asset = self.Config.FloatingIcon
+	local T = self.Theme
 
-	-- 自定义图片：铺在胶囊中间，不显示文字
-	if isAsset(cfg) then
-		create("ImageLabel", {
-			Name = "I",
-			Image = cfg,
-			BackgroundTransparency = 1,
-			Size = UDim2.fromOffset(26, 26),
-			AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = UDim2.fromScale(0.5, 0.5),
-			ZIndex = 3,
-			Parent = holder,
-		})
-		return
-	end
-
-	-- 左侧状态点：开启=实心白，关闭=暗淡
-	local dot = create("Frame", {
-		Name = "Dot",
+	-- 左侧品牌徽标：白底圆角方块 + 品牌首字母（填 rbxassetid 则用图片）
+	local mark = create("Frame", {
+		Name = "Mark",
 		BackgroundColor3 = Color3.fromRGB(255, 255, 255),
-		BackgroundTransparency = self._visible and 0 or 0.6,
-		Size = UDim2.fromOffset(9, 9),
-		Position = UDim2.new(0, 17, 0.5, 0),
+		Size = UDim2.fromOffset(28, 28),
+		Position = UDim2.new(0, 8, 0.5, 0),
 		AnchorPoint = Vector2.new(0, 0.5),
-		BorderSizePixel = 0,
 		ZIndex = 3,
 		Parent = holder,
 	})
-	corner(dot, 4.5)
-	stroke(dot, Color3.fromRGB(255, 255, 255), 1, 0.4)
-	self.FloatingDot = dot
+	corner(mark, 9)
+	gradient(mark, Color3.fromRGB(255, 255, 255), Color3.fromRGB(186, 186, 194), 45)
+	self.FloatingMark = mark
 
-	-- 白色 Open / Close 文字（随主界面开关状态切换）
-	local lbl = create("TextLabel", {
-		Name = "I",
-		Text = self._visible and "Close" or "Open",
+	if isAsset(asset) then
+		create("ImageLabel", {
+			Name = "Img",
+			Image = asset,
+			BackgroundTransparency = 1,
+			Size = UDim2.fromScale(1, 1),
+			ScaleType = Enum.ScaleType.Fit,
+			ZIndex = 4,
+			Parent = mark,
+		})
+	else
+		create("TextLabel", {
+			Name = "Letter",
+			Text = string.upper(string.sub(brand, 1, 1)),
+			BackgroundTransparency = 1,
+			Font = Enum.Font.GothamBlack,
+			TextColor3 = T.Ink,
+			TextSize = 14,
+			Size = UDim2.fromScale(1, 1),
+			ZIndex = 4,
+			Parent = mark,
+		})
+	end
+
+	-- 品牌名
+	create("TextLabel", {
+		Name = "Brand",
+		Text = brand,
 		BackgroundTransparency = 1,
 		Font = Enum.Font.GothamBold,
 		TextColor3 = Color3.fromRGB(255, 255, 255),
-		TextSize = 13,
+		TextSize = 13.5,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextYAlignment = Enum.TextYAlignment.Center,
+		Size = UDim2.fromOffset(78, 18),
+		Position = UDim2.new(0, 43, 0.5, 0),
 		AnchorPoint = Vector2.new(0, 0.5),
-		Position = UDim2.new(0, 37, 0.5, 0),
-		Size = UDim2.fromOffset(58, 16),
 		ZIndex = 3,
 		Parent = holder,
 	})
-	self.FloatingLabel = lbl
-	return lbl
+
+	-- 右侧状态：白字 Open / Close，随主界面开关切换
+	local state = create("TextLabel", {
+		Name = "State",
+		Text = self._visible and "Close" or "Open",
+		BackgroundTransparency = 1,
+		Font = Enum.Font.GothamMedium,
+		TextColor3 = self._visible and Color3.fromRGB(255, 255, 255)
+			or Color3.fromRGB(148, 148, 158),
+		TextSize = 11,
+		TextXAlignment = Enum.TextXAlignment.Right,
+		TextYAlignment = Enum.TextYAlignment.Center,
+		Size = UDim2.fromOffset(42, 16),
+		Position = UDim2.new(1, -12, 0.5, 0),
+		AnchorPoint = Vector2.new(1, 0.5),
+		ZIndex = 3,
+		Parent = holder,
+	})
+	self.FloatingLabel = state
+	return state
 end
 
 function Nova:_UpdateFloatingLabel()
 	if self.FloatingLabel then
 		self.FloatingLabel.Text = self._visible and "Close" or "Open"
-	end
-	if self.FloatingDot then
-		tween(self.FloatingDot, { BackgroundTransparency = self._visible and 0 or 0.6 }, 0.18)
+		tween(self.FloatingLabel, {
+			TextColor3 = self._visible and Color3.fromRGB(255, 255, 255)
+				or Color3.fromRGB(148, 148, 158),
+		}, 0.18)
 	end
 end
 
@@ -742,12 +810,12 @@ function Nova:_BuildWindow()
 	local logo = create("Frame", {
 		Name = "Logo",
 		BackgroundColor3 = Color3.fromRGB(255, 255, 255),
-		Size = UDim2.fromOffset(40, 40),
-		Position = UDim2.new(0, 14, 0, 18),
+		Size = UDim2.fromOffset(36, 36),
+		Position = UDim2.new(0, 16, 0, 12),
 		ZIndex = 13,
 		Parent = self.Sidebar,
 	})
-	corner(logo, 12)
+	corner(logo, 11)
 	gradient(logo, Color3.fromRGB(255, 255, 255), Color3.fromRGB(196, 196, 204), 45)
 
 	local iconCfg = self.Config.Icon
@@ -755,14 +823,14 @@ function Nova:_BuildWindow()
 		create("ImageLabel", {
 			Image = iconCfg,
 			BackgroundTransparency = 1,
-			Size = UDim2.fromOffset(22, 22),
+			Size = UDim2.fromOffset(20, 20),
 			AnchorPoint = Vector2.new(0.5, 0.5),
 			Position = UDim2.fromScale(0.5, 0.5),
 			ZIndex = 14,
 			Parent = logo,
 		})
 	elseif iconCfg and iconCfg ~= "default" then
-		icon(logo, iconCfg, 18, T.Ink, {
+		icon(logo, iconCfg, 17, T.Ink, {
 			AnchorPoint = Vector2.new(0.5, 0.5),
 			Position = UDim2.fromScale(0.5, 0.5),
 			ZIndex = 14,
@@ -776,22 +844,29 @@ function Nova:_BuildWindow()
 			BackgroundTransparency = 1,
 			Font = Enum.Font.GothamBlack,
 			TextColor3 = T.Ink,
-			TextSize = 19,
+			TextSize = 17,
 			Size = UDim2.fromScale(1, 1),
 			ZIndex = 14,
 			Parent = logo,
 		})
 	end
 
-	-- 主栏按钮容器
-	self.PrimaryHolder = create("Frame", {
+	-- 主栏按钮容器（图标多了可以上下滑动）
+	self.PrimaryHolder = create("ScrollingFrame", {
 		Name = "PrimaryHolder",
 		BackgroundTransparency = 1,
-		Size = UDim2.new(1, 0, 1, -150),
-		Position = UDim2.fromOffset(0, 74),
+		BorderSizePixel = 0,
+		Size = UDim2.new(1, 0, 1, -74),
+		Position = UDim2.fromOffset(0, 62),
+		CanvasSize = UDim2.fromOffset(0, 0),
+		AutomaticCanvasSize = Enum.AutomaticSize.Y,
+		ScrollingDirection = Enum.ScrollingDirection.Y,
+		ScrollBarThickness = 0,
+		ElasticBehavior = Enum.ElasticBehavior.Never,
 		ZIndex = 13,
 		Parent = self.Sidebar,
 	})
+	padding(self.PrimaryHolder, 8, 10, 0, 0)
 	list(self.PrimaryHolder, Enum.FillDirection.Vertical, 8, Enum.HorizontalAlignment.Center)
 
 	-- 右侧主区域
@@ -808,7 +883,7 @@ function Nova:_BuildWindow()
 	local header = create("Frame", {
 		Name = "Header",
 		BackgroundTransparency = 1,
-		Size = UDim2.new(1, 0, 0, 66),
+		Size = UDim2.new(1, 0, 0, 60),
 		ZIndex = 12,
 		Parent = main,
 	})
@@ -827,13 +902,13 @@ function Nova:_BuildWindow()
 	self.AvatarHolder = create("Frame", {
 		Name = "AvatarHolder",
 		BackgroundColor3 = T.Element,
-		Size = UDim2.fromOffset(38, 38),
-		Position = UDim2.new(0, 18, 0.5, 0),
+		Size = UDim2.fromOffset(34, 34),
+		Position = UDim2.new(0, 14, 0.5, 0),
 		AnchorPoint = Vector2.new(0, 0.5),
 		ZIndex = 13,
 		Parent = header,
 	})
-	corner(self.AvatarHolder, 12)
+	corner(self.AvatarHolder, 10)
 	stroke(self.AvatarHolder, T.Accent, 1.5, 0.35)
 	self:_RenderAvatar()
 
@@ -844,10 +919,10 @@ function Nova:_BuildWindow()
 		BackgroundTransparency = 1,
 		Font = Enum.Font.GothamBold,
 		TextColor3 = T.Text,
-		TextSize = 14,
+		TextSize = 13.5,
 		TextXAlignment = Enum.TextXAlignment.Left,
-		Size = UDim2.new(0, 220, 0, 17),
-		Position = UDim2.fromOffset(66, 16),
+		Size = UDim2.new(0, 200, 0, 16),
+		Position = UDim2.fromOffset(58, 12),
 		ZIndex = 13,
 		Parent = header,
 	})
@@ -857,10 +932,10 @@ function Nova:_BuildWindow()
 		BackgroundTransparency = 1,
 		Font = Enum.Font.Gotham,
 		TextColor3 = T.TextMuted,
-		TextSize = 11,
+		TextSize = 10.5,
 		TextXAlignment = Enum.TextXAlignment.Left,
-		Size = UDim2.new(0, 220, 0, 14),
-		Position = UDim2.fromOffset(66, 34),
+		Size = UDim2.new(0, 200, 0, 13),
+		Position = UDim2.fromOffset(58, 28),
 		ZIndex = 13,
 		Parent = header,
 	})
@@ -873,13 +948,13 @@ function Nova:_BuildWindow()
 			AutoButtonColor = false,
 			BackgroundColor3 = T.Element,
 			BackgroundTransparency = 1,
-			Size = UDim2.fromOffset(32, 32),
+			Size = UDim2.fromOffset(30, 30),
 			AnchorPoint = Vector2.new(1, 0.5),
 			ZIndex = 13,
 			Parent = header,
 		})
-		corner(b, 10)
-		local ic = icon(b, glyph, 15, T.TextDim, {
+		corner(b, 9)
+		local ic = icon(b, glyph, 14, T.TextDim, {
 			AnchorPoint = Vector2.new(0.5, 0.5),
 			Position = UDim2.fromScale(0.5, 0.5),
 			ZIndex = 14,
@@ -897,29 +972,29 @@ function Nova:_BuildWindow()
 	end
 
 	local closeBtn = headerButton("Close", "close", T.Bad)
-	closeBtn.Position = UDim2.new(1, -14, 0.5, 0)
+	closeBtn.Position = UDim2.new(1, -10, 0.5, 0)
 	closeBtn.MouseButton1Click:Connect(function() self:Close() end)
 
 	local minBtn = headerButton("Minimize", "minimize", T.Text)
-	minBtn.Position = UDim2.new(1, -52, 0.5, 0)
+	minBtn.Position = UDim2.new(1, -44, 0.5, 0)
 
 	-- 搜索框
 	local searchBox = create("Frame", {
 		Name = "SearchBox",
 		BackgroundColor3 = T.Element,
 		BackgroundTransparency = 0.35,
-		Size = UDim2.fromOffset(180, 32),
-		Position = UDim2.new(1, -100, 0.5, 0),
+		Size = UDim2.fromOffset(160, 28),
+		Position = UDim2.new(1, -82, 0.5, 0),
 		AnchorPoint = Vector2.new(1, 0.5),
 		ZIndex = 13,
 		Parent = header,
 	})
-	corner(searchBox, 10)
+	corner(searchBox, 8)
 	local sbStroke = stroke(searchBox, T.Stroke, 1, 0.88)
-	icon(searchBox, "search", 14, T.TextMuted, {
-		Position = UDim2.fromOffset(10, 9),
+	icon(searchBox, "search", 13, T.TextMuted, {
+		Position = UDim2.fromOffset(9, 7),
 		ZIndex = 14,
-		Size = UDim2.fromOffset(14, 14),
+		Size = UDim2.fromOffset(13, 13),
 	})
 	local searchInput = create("TextBox", {
 		Name = "Input",
@@ -929,11 +1004,11 @@ function Nova:_BuildWindow()
 		BackgroundTransparency = 1,
 		Font = Enum.Font.Gotham,
 		TextColor3 = T.Text,
-		TextSize = 12,
+		TextSize = 11.5,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		ClearTextOnFocus = false,
-		Size = UDim2.new(1, -34, 1, 0),
-		Position = UDim2.fromOffset(30, 0),
+		Size = UDim2.new(1, -28, 1, 0),
+		Position = UDim2.fromOffset(27, 0),
 		ZIndex = 14,
 		Parent = searchBox,
 	})
@@ -949,69 +1024,120 @@ function Nova:_BuildWindow()
 		self:_ApplyFilter()
 	end)
 
-	-- 副侧边栏（标签条，自动换行，不用横向滚）
+	--==========================================================================
+	-- 副侧边栏：单行标签条（带名字），可左右滑动，高度固定，不会挤压内容
+	--==========================================================================
+	local TAB_H = 30
+	local TABBAR_H = TAB_H + 14
+	local TABBAR_Y = 68
+	local CONTENT_Y = TABBAR_Y + TABBAR_H + 12
+
 	local tabBar = create("Frame", {
 		Name = "TabBar",
 		BackgroundColor3 = T.Panel,
-		BackgroundTransparency = 0.55,
-		Size = UDim2.new(1, -28, 0, 0),
-		AutomaticSize = Enum.AutomaticSize.Y,
-		Position = UDim2.fromOffset(14, 68),
+		BackgroundTransparency = 0.4,
+		Size = UDim2.new(1, -28, 0, TABBAR_H),
+		Position = UDim2.fromOffset(14, TABBAR_Y),
 		ZIndex = 12,
 		Parent = main,
 	})
-	corner(tabBar, 12)
-	stroke(tabBar, T.Stroke, 1, 0.94)
-	padding(tabBar, 8, 8, 8, 8)
+	corner(tabBar, 10)
+	stroke(tabBar, T.Stroke, 1, 0.93)
 	self.TabBar = tabBar
 
-	self.TabScroll = create("Frame", {
+	local tabScroll = create("ScrollingFrame", {
 		Name = "TabScroll",
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
-		Size = UDim2.new(1, 0, 0, 0),
-		AutomaticSize = Enum.AutomaticSize.Y,
+		Size = UDim2.new(1, -14, 1, -14),
+		Position = UDim2.fromOffset(7, 7),
+		CanvasSize = UDim2.fromOffset(0, 0),
+		AutomaticCanvasSize = Enum.AutomaticSize.X,
+		ScrollingDirection = Enum.ScrollingDirection.X,
+		ScrollBarThickness = 0,
+		ScrollingEnabled = false,
+		ElasticBehavior = Enum.ElasticBehavior.Never,
 		ZIndex = 12,
 		Parent = tabBar,
 	})
-	create("UIListLayout", {
+	local tabLayout = create("UIListLayout", {
 		FillDirection = Enum.FillDirection.Horizontal,
 		HorizontalAlignment = Enum.HorizontalAlignment.Left,
-		VerticalAlignment = Enum.VerticalAlignment.Top,
-		Wraps = true,
+		VerticalAlignment = Enum.VerticalAlignment.Center,
 		Padding = UDim.new(0, 7),
 		SortOrder = Enum.SortOrder.LayoutOrder,
-		Parent = self.TabScroll,
+		Parent = tabScroll,
 	})
+	self.TabScroll = tabScroll
+	self.TabLayout = tabLayout
+	self.TabHovered = false
+	self.TabPanned = false
 
-	-- 内容区
+	-- 横向滑动：鼠标滚轮（悬停在标签条上）+ 按住拖动
+	local function tabMax()
+		return math.max(0, tabLayout.AbsoluteContentSize.X - tabScroll.AbsoluteSize.X)
+	end
+	local function tabScrollTo(x)
+		tabScroll.CanvasPosition = Vector2.new(clamp(x, 0, tabMax()), 0)
+	end
+	tabBar.MouseEnter:Connect(function() self.TabHovered = true end)
+	tabBar.MouseLeave:Connect(function() self.TabHovered = false end)
+
+	local tabPanning, tabPanMoved = false, false
+	local tabPanX, tabPanStart = 0, 0
+	tabScroll.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1
+			or input.UserInputType == Enum.UserInputType.Touch then
+			tabPanning, tabPanMoved = true, false
+			tabPanX, tabPanStart = input.Position.X, tabScroll.CanvasPosition.X
+		end
+	end)
+	self._conns[#self._conns + 1] = UserInputService.InputChanged:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseWheel then
+			if self.TabHovered and tabMax() > 0 then
+				tabScrollTo(tabScroll.CanvasPosition.X - input.Position.Z * 70)
+			end
+			return
+		end
+		if not tabPanning then return end
+		if input.UserInputType == Enum.UserInputType.MouseMovement
+			or input.UserInputType == Enum.UserInputType.Touch then
+			local dx = input.Position.X - tabPanX
+			if math.abs(dx) > 4 then tabPanMoved = true end
+			if tabPanMoved then tabScrollTo(tabPanStart - dx) end
+		end
+	end)
+	self._conns[#self._conns + 1] = UserInputService.InputEnded:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1
+			or input.UserInputType == Enum.UserInputType.Touch then
+			if tabPanning and tabPanMoved then
+				-- 拖动刚结束时屏蔽一次标签点击，避免误切页
+				self.TabPanned = true
+				task.delay(0.15, function()
+					self.TabPanned = false
+				end)
+			end
+			tabPanning = false
+		end
+	end)
+
+	-- 内容区（位置固定写死，不再依赖标签条实测高度）
 	self.Content = create("ScrollingFrame", {
 		Name = "Content",
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
-		Size = UDim2.new(1, -28, 1, -180),
-		Position = UDim2.fromOffset(14, 128),
+		Size = UDim2.new(1, -28, 1, -(CONTENT_Y + 14)),
+		Position = UDim2.fromOffset(14, CONTENT_Y),
 		CanvasSize = UDim2.fromOffset(0, 0),
 		AutomaticCanvasSize = Enum.AutomaticSize.Y,
 		ScrollingDirection = Enum.ScrollingDirection.Y,
-		ScrollBarThickness = 4,
+		ScrollBarThickness = 3,
 		ScrollBarImageColor3 = T.Stroke,
 		ScrollBarImageTransparency = 0.55,
 		ElasticBehavior = Enum.ElasticBehavior.Never,
 		ZIndex = 12,
 		Parent = main,
 	})
-
-	-- 标签条高度随换行变化，内容区跟着下移
-	local function relayout()
-		local h = tabBar.AbsoluteSize.Y
-		if h <= 0 then h = 50 end
-		local top = 68 + h + 14
-		self.Content.Position = UDim2.fromOffset(14, top)
-		self.Content.Size = UDim2.new(1, -28, 1, -(top + 14))
-	end
-	self._conns[#self._conns + 1] = tabBar:GetPropertyChangedSignal("AbsoluteSize"):Connect(relayout)
-	relayout()
 end
 
 function Nova:_PlayerName()
@@ -1412,6 +1538,56 @@ function Nova:SetPlayerSubtitle(text)
 	if self.SubLabel then self.SubLabel.Text = text or "" end
 end
 
+function Nova:SetBrand(text)
+	self.Config.Brand = text
+	self:_RenderFloatingIcon()
+end
+
+--==============================================================================
+-- 悬浮提示（提示层挂在根节点，不受侧边栏滚动裁剪影响）
+--==============================================================================
+function Nova:_TextWidth(text, size, font)
+	local w = 0
+	pcall(function()
+		local ts = game:GetService("TextService")
+		w = ts:GetTextSize(text, size, font, Vector2.new(400, 60)).X
+	end)
+	if w <= 0 then
+		w = #text * size * 0.58
+	end
+	return w
+end
+
+function Nova:_ShowTip(text, gui)
+	if not self.Tip then return end
+	self._tipToken = (self._tipToken or 0) + 1
+	local w = self:_TextWidth(text, 11, Enum.Font.GothamMedium) + 20
+	self.Tip.Size = UDim2.fromOffset(w, 26)
+	self.TipLabel.Text = text
+	local vp = self:_Viewport()
+	local x = gui.AbsolutePosition.X + gui.AbsoluteSize.X + 10
+	local y = gui.AbsolutePosition.Y + gui.AbsoluteSize.Y / 2
+	x = math.min(x, math.max(4, vp.X - w - 6))
+	y = clamp(y, 16, math.max(16, vp.Y - 16))
+	self.Tip.AnchorPoint = Vector2.new(0, 0.5)
+	self.Tip.Position = UDim2.fromOffset(x, y)
+	self.Tip.Visible = true
+	self.Tip.BackgroundTransparency = 1
+	tween(self.Tip, { BackgroundTransparency = 0.02 }, 0.14)
+end
+
+function Nova:_HideTip()
+	if not self.Tip then return end
+	self._tipToken = (self._tipToken or 0) + 1
+	local token = self._tipToken
+	tween(self.Tip, { BackgroundTransparency = 1 }, 0.1)
+	task.delay(0.14, function()
+		if self.Tip and self._tipToken == token then
+			self.Tip.Visible = false
+		end
+	end)
+end
+
 --==============================================================================
 -- 自适应
 --==============================================================================
@@ -1571,56 +1747,13 @@ function Nova:Primary(name, iconName)
 		tab:Select()
 	end)
 
-	-- 悬浮提示
-	tab._tip = create("Frame", {
-		Name = "Tip",
-		BackgroundColor3 = T.Card,
-		Size = UDim2.fromOffset(0, 26),
-		Position = UDim2.new(1, 10, 0.5, 0),
-		AnchorPoint = Vector2.new(0, 0.5),
-		BackgroundTransparency = 1,
-		ZIndex = 40,
-		Visible = false,
-		Parent = btn,
-	})
-	corner(tab._tip, 7)
-	local tipLabel = create("TextLabel", {
-		Text = name,
-		BackgroundTransparency = 1,
-		Font = Enum.Font.GothamMedium,
-		TextColor3 = T.Text,
-		TextSize = 11,
-		ZIndex = 41,
-		Size = UDim2.fromOffset(100, 26),
-		Position = UDim2.fromOffset(9, 0),
-		TextXAlignment = Enum.TextXAlignment.Left,
-		Parent = tab._tip,
-	})
-	tab._tipLabel = tipLabel
-	tab._tipWidth = 0
-	local textSvc = game:GetService("TextService")
-	pcall(function()
-		local sz = textSvc:GetTextSize(name, 11, Enum.Font.GothamMedium, Vector2.new(400, 100))
-		tab._tipWidth = sz.X + 20
+	-- 悬浮提示（挂在根节点的提示层里，主侧边栏滚动裁剪也不会被切掉）
+	btn.MouseEnter:Connect(function()
+		self:_ShowTip(name, btn)
 	end)
-	if tab._tipWidth <= 0 then
-		tab._tipWidth = #name * 6 + 20
-	end
-	tab._tip.Size = UDim2.fromOffset(tab._tipWidth, 26)
-
-	if btn.Parent then
-		btn.MouseEnter:Connect(function()
-			tab._tip.Visible = true
-			tab._tip.BackgroundTransparency = 1
-			tween(tab._tip, { BackgroundTransparency = 0.02 }, 0.14)
-		end)
-		btn.MouseLeave:Connect(function()
-			tween(tab._tip, { BackgroundTransparency = 1 }, 0.1)
-			task.delay(0.12, function()
-				tab._tip.Visible = false
-			end)
-		end)
-	end
+	btn.MouseLeave:Connect(function()
+		self:_HideTip()
+	end)
 
 	self.PrimaryTabs[#self.PrimaryTabs + 1] = tab
 
@@ -1642,26 +1775,28 @@ function PrimaryPane:Secondary(name, iconName)
 
 	local T = lib.Theme
 
-	-- 副标签按钮
+	-- 副标签按钮（宽度按文字实测写死，避免 AutomaticSize 在横向列表里算错）
+	local labelW = math.floor(lib:_TextWidth(name, 12, Enum.Font.GothamMedium) + 0.5)
+	local btnW = math.max(72, 12 + 13 + 7 + labelW + 12)
+
 	local btn = create("TextButton", {
 		Name = "Secondary_" .. name,
 		Text = "",
 		AutoButtonColor = false,
 		BackgroundColor3 = Color3.fromRGB(255, 255, 255),
 		BackgroundTransparency = 1,
-		Size = UDim2.fromOffset(0, 34),
-		AutomaticSize = Enum.AutomaticSize.X,
+		Size = UDim2.fromOffset(btnW, 30),
 		LayoutOrder = #self.Secondaries + 1,
 		ZIndex = 13,
 		Parent = lib.TabScroll,
 	})
-	corner(btn, 10)
-	padding(btn, 0, 0, 14, 14)
-	list(btn, Enum.FillDirection.Horizontal, 8, Enum.HorizontalAlignment.Center, Enum.VerticalAlignment.Center)
+	corner(btn, 8)
+	list(btn, Enum.FillDirection.Horizontal, 7, Enum.HorizontalAlignment.Center, Enum.VerticalAlignment.Center)
 
-	local ic = icon(btn, iconName, 14, T.TextMuted, {
+	local ic = icon(btn, iconName, 13, T.TextMuted, {
 		LayoutOrder = 1,
 		ZIndex = 14,
+		Size = UDim2.fromOffset(13, 13),
 	})
 	pane.Icon = ic
 	local lbl = create("TextLabel", {
@@ -1669,9 +1804,8 @@ function PrimaryPane:Secondary(name, iconName)
 		BackgroundTransparency = 1,
 		Font = Enum.Font.GothamMedium,
 		TextColor3 = T.TextMuted,
-		TextSize = 12.5,
-		Size = UDim2.fromOffset(0, 15),
-		AutomaticSize = Enum.AutomaticSize.X,
+		TextSize = 12,
+		Size = UDim2.fromOffset(labelW, 15),
 		LayoutOrder = 2,
 		ZIndex = 14,
 		Parent = btn,
@@ -1682,7 +1816,7 @@ function PrimaryPane:Secondary(name, iconName)
 	local underline = create("Frame", {
 		Name = "Underline",
 		BackgroundColor3 = T.Accent,
-		Size = UDim2.new(1, -16, 0, 2),
+		Size = UDim2.new(1, -14, 0, 2),
 		Position = UDim2.new(0.5, 0, 1, -1),
 		AnchorPoint = Vector2.new(0.5, 1),
 		BorderSizePixel = 0,
@@ -1706,6 +1840,7 @@ function PrimaryPane:Secondary(name, iconName)
 		tint(ic, T.TextMuted)
 	end)
 	btn.MouseButton1Click:Connect(function()
+		if lib.TabPanned then return end
 		pane:Select()
 	end)
 
@@ -1739,7 +1874,7 @@ function PrimaryPane:Secondary(name, iconName)
 			ZIndex = 12,
 			Parent = page,
 		})
-		list(pane.Columns[i], Enum.FillDirection.Vertical, 14)
+		list(pane.Columns[i], Enum.FillDirection.Vertical, 12)
 	end
 
 	self.Secondaries[#self.Secondaries + 1] = pane
@@ -1824,14 +1959,14 @@ function SecondaryPane:Section(title)
 		Rotation = 90,
 		Parent = card,
 	})
-	padding(card, 14, 14, 14, 14)
-	list(card, Enum.FillDirection.Vertical, 10)
+	padding(card, 12, 12, 12, 12)
+	list(card, Enum.FillDirection.Vertical, 8)
 
 	-- 卡片头
 	local head = create("Frame", {
 		Name = "Head",
 		BackgroundTransparency = 1,
-		Size = UDim2.new(1, 0, 0, 22),
+		Size = UDim2.new(1, 0, 0, 20),
 		LayoutOrder = 1,
 		ZIndex = 14,
 		Parent = card,
@@ -1839,7 +1974,7 @@ function SecondaryPane:Section(title)
 	create("Frame", {
 		Name = "Dot",
 		BackgroundColor3 = T.Accent,
-		Size = UDim2.fromOffset(6, 6),
+		Size = UDim2.fromOffset(5, 5),
 		Position = UDim2.new(0, 0, 0.5, 0),
 		AnchorPoint = Vector2.new(0, 0.5),
 		BorderSizePixel = 0,
@@ -1847,17 +1982,17 @@ function SecondaryPane:Section(title)
 		Parent = head,
 	})
 	local dot = head:FindFirstChild("Dot")
-	corner(dot, 3)
+	corner(dot, 2.5)
 	create("TextLabel", {
 		Name = "Title",
 		Text = title or "Section",
 		BackgroundTransparency = 1,
 		Font = Enum.Font.GothamBold,
 		TextColor3 = T.Text,
-		TextSize = 13,
+		TextSize = 12,
 		TextXAlignment = Enum.TextXAlignment.Left,
-		Size = UDim2.new(1, -16, 1, 0),
-		Position = UDim2.fromOffset(14, 0),
+		Size = UDim2.new(1, -14, 1, 0),
+		Position = UDim2.fromOffset(12, 0),
 		ZIndex = 15,
 		Parent = head,
 	})
@@ -1968,11 +2103,11 @@ function Section:_Row(cfg, height, title, desc, mode)
 			BackgroundTransparency = 1,
 			Font = Enum.Font.GothamMedium,
 			TextColor3 = T.Text,
-			TextSize = 13,
+			TextSize = 12.5,
 			TextXAlignment = Enum.TextXAlignment.Left,
 			TextTruncate = Enum.TextTruncate.AtEnd,
-			Size = UDim2.new(1, -160, 0, 16),
-			Position = UDim2.fromOffset(0, desc and 10 or (height - 16) / 2),
+			Size = UDim2.new(1, -150, 0, 15),
+			Position = UDim2.fromOffset(0, desc and 8 or (height - 15) / 2),
 			ZIndex = 15,
 			Parent = row,
 		})
@@ -1984,11 +2119,11 @@ function Section:_Row(cfg, height, title, desc, mode)
 			BackgroundTransparency = 1,
 			Font = Enum.Font.Gotham,
 			TextColor3 = T.TextMuted,
-			TextSize = 11,
+			TextSize = 10.5,
 			TextXAlignment = Enum.TextXAlignment.Left,
 			TextTruncate = Enum.TextTruncate.AtEnd,
-			Size = UDim2.new(1, -160, 0, 14),
-			Position = UDim2.fromOffset(0, 27),
+			Size = UDim2.new(1, -150, 0, 13),
+			Position = UDim2.fromOffset(0, 23),
 			ZIndex = 15,
 			Parent = row,
 		})
@@ -2036,7 +2171,7 @@ function Section:Toggle(cfg)
 	local lib = self.Library
 	local T = lib.Theme
 
-	local row, right = self:_Row(cfg, cfg.Menu and 58 or 54, cfg.Title, cfg.Desc)
+	local row, right = self:_Row(cfg, cfg.Menu and 50 or 46, cfg.Title, cfg.Desc)
 
 	local menuIcon
 	if cfg.Menu then
@@ -2045,16 +2180,17 @@ function Section:Toggle(cfg)
 			Text = "",
 			AutoButtonColor = false,
 			BackgroundTransparency = 1,
-			Size = UDim2.fromOffset(26, 26),
-			Position = UDim2.new(1, -114, 0.5, 0),
+			Size = UDim2.fromOffset(24, 24),
+			Position = UDim2.new(1, -46, 0.5, 0),
 			AnchorPoint = Vector2.new(1, 0.5),
 			ZIndex = 16,
 			Parent = row,
 		})
-		menuIcon = icon(mb, "more", 15, T.TextMuted, {
+		menuIcon = icon(mb, "more", 14, T.TextMuted, {
 			AnchorPoint = Vector2.new(0.5, 0.5),
 			Position = UDim2.fromScale(0.5, 0.5),
 			ZIndex = 17,
+			Size = UDim2.fromOffset(14, 14),
 		})
 		mb.MouseEnter:Connect(function()
 			tint(menuIcon, T.Text)
@@ -2072,13 +2208,13 @@ function Section:Toggle(cfg)
 		Text = "",
 		AutoButtonColor = false,
 		BackgroundColor3 = T.Element,
-		Size = UDim2.fromOffset(46, 26),
+		Size = UDim2.fromOffset(38, 21),
 		Position = UDim2.new(1, 0, 0.5, 0),
 		AnchorPoint = Vector2.new(1, 0.5),
 		ZIndex = 16,
 		Parent = row,
 	})
-	corner(switch, 13)
+	corner(switch, 10.5)
 	stroke(switch, T.Stroke, 1, 0.9)
 	local swGrad = create("UIGradient", {
 		Color = ColorSequence.new(T.Accent, T.Accent2),
@@ -2602,10 +2738,9 @@ function Section:Input(cfg)
 	return obj
 end
 
-
 --==============================================================================
 -- 演示脚本：整段粘贴到执行器即可运行（库本体 + 示例已合并在本文件）
--- 悬浮球默认在屏幕右侧中部：点一下开关主界面，按住可拖动
+-- 悬浮胶囊 "Lev Hub" 默认在屏幕右侧中部：点一下开关主界面，按住可拖动
 --==============================================================================
 
 local function showError(msg)
@@ -2673,6 +2808,7 @@ local ok, err = pcall(function()
 	local win = Nova.new({
 		Title          = "NOVA",
 		Subtitle       = "Interface Suite",
+		Brand          = "Lev Hub",      -- 悬浮胶囊上显示的品牌名
 		Icon           = nil,          -- nil = 白底黑字的标题首字母；也可填图片 id 或图标名
 		PlayerName     = "Past Owl",
 		PlayerSubtitle = "Till: 1 mar 2026",
