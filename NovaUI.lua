@@ -796,6 +796,7 @@ function Nova:_RenderFloatingIcon()
 		Size = UDim2.fromOffset(32, 32),
 		Position = UDim2.new(0, 7, 0.5, 0),
 		AnchorPoint = Vector2.new(0, 0.5),
+		ClipsDescendants = true,   -- 图片铺满时按圆角裁切，四角不会方出来
 		ZIndex = 3,
 		Parent = holder,
 	})
@@ -805,17 +806,18 @@ function Nova:_RenderFloatingIcon()
 
 	local img = self:_FloatImage()
 	if img then
-		create("ImageLabel", {
+		-- 铺满整个白色圆角方块：ScaleType.Crop 保证不留白边，UICorner 跟着方块圆角裁切
+		local pic = create("ImageLabel", {
 			Name = "Img",
 			Image = img,
 			BackgroundTransparency = 1,
-			Size = UDim2.fromOffset(26, 26),
-			AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = UDim2.fromScale(0.5, 0.5),
-			ScaleType = Enum.ScaleType.Fit,
+			Size = UDim2.fromScale(1, 1),
+			Position = UDim2.fromScale(0, 0),
+			ScaleType = Enum.ScaleType.Crop,
 			ZIndex = 4,
 			Parent = mark,
 		})
+		corner(pic, 10)
 	else
 		-- 取不到图 → 回退字母徽标（FloatLetter 优先，否则品牌名首字母）
 		local letter = self.Config.FloatLetter
@@ -936,6 +938,7 @@ function Nova:_BuildWindow()
 		Name = "Content",
 		BackgroundTransparency = 1,
 		Size = UDim2.fromScale(1, 1),
+		ClipsDescendants = true,   -- 品牌图铺满时按圆角裁切
 		ZIndex = 13,
 		Parent = logo,
 	})
@@ -1266,17 +1269,18 @@ function Nova:_RenderLogo()
 	local T = self.Theme
 	local img = self:_BrandImage()
 	if img then
-		create("ImageLabel", {
+		-- 铺满整个 logo 方块（和悬浮胶囊一致），不留白边
+		local pic = create("ImageLabel", {
 			Name = "Img",
 			Image = img,
 			BackgroundTransparency = 1,
-			Size = UDim2.fromOffset(26, 26),
-			AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = UDim2.fromScale(0.5, 0.5),
-			ScaleType = Enum.ScaleType.Fit,
+			Size = UDim2.fromScale(1, 1),
+			Position = UDim2.fromScale(0, 0),
+			ScaleType = Enum.ScaleType.Crop,
 			ZIndex = 14,
 			Parent = holder,
 		})
+		corner(pic, 11)
 		return
 	end
 
