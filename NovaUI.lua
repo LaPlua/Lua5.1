@@ -2,14 +2,15 @@
 ================================================================================
   Nova UI  ·  现代化 Roblox UI 库
 --------------------------------------------------------------------------------
-  版本 : 1.0.0
+  版本 : 1.1.0
   语法 : 兼容 Lua 5.1 / Roblox Luau
   特性 :
-    · 悬浮球：纯黑圆盘 + 白色 Open/Close 文字（随主界面状态切换，可拖动）
-    · 主侧边栏 + 副侧边栏（一个主栏可挂多个副栏，顶部标签条）
+    · 黑白配色，无彩色渐变、无发光污渍，边缘干净
+    · 悬浮窗：纯黑胶囊条 + 白字 Open/Close + 状态点（随主界面状态切换，可拖动）
+    · 主侧边栏 + 副侧边栏（副栏标签自动换行，无需横向滚动）
     · 左上角玩家头像 + 玩家名字（均可自定义）
     · 内置矢量图标库（纯 Frame/UIStroke 绘制，无字体与 emoji 依赖），也可用 rbxassetid 覆盖
-    · 开关 / 滑块 / 下拉 / 按钮 / 标签 / 分割线 / 按键绑定 / 输入框
+    · 开关 / 滑块（长方形推子） / 下拉 / 按钮 / 标签 / 分割线 / 按键绑定 / 输入框
     · 卡片分栏布局、实时搜索、悬浮提示、通知中心
     · 自适应分辨率（主界面大小随设备视口动态计算，始终完整显示）
 ================================================================================
@@ -26,33 +27,35 @@ local LocalPlayer      = Players.LocalPlayer
 
 local Nova = {}
 Nova.__index = Nova
-Nova.Version = "1.0.0"
+Nova.Version = "1.1.0"
 Nova.Flags   = {}
 
 --==============================================================================
 -- 主题
 --==============================================================================
 Nova.Theme = {
-	Window      = Color3.fromRGB(17, 18, 23),
-	Sidebar     = Color3.fromRGB(13, 14, 18),
-	Header      = Color3.fromRGB(17, 18, 23),
-	Panel       = Color3.fromRGB(21, 23, 29),
-	Card        = Color3.fromRGB(24, 26, 33),
-	CardHover   = Color3.fromRGB(29, 32, 40),
-	Element     = Color3.fromRGB(34, 37, 46),
-	ElementHover= Color3.fromRGB(44, 48, 59),
+	Window      = Color3.fromRGB(10, 10, 11),
+	Sidebar     = Color3.fromRGB(6, 6, 7),
+	Header      = Color3.fromRGB(10, 10, 11),
+	Panel       = Color3.fromRGB(16, 16, 18),
+	Card        = Color3.fromRGB(20, 20, 23),
+	CardHover   = Color3.fromRGB(25, 25, 28),
+	Element     = Color3.fromRGB(31, 31, 35),
+	ElementHover= Color3.fromRGB(42, 42, 47),
+
+	Ink         = Color3.fromRGB(9, 9, 10),   -- 白色块上的深色内容
 
 	Stroke      = Color3.fromRGB(255, 255, 255),
-	StrokeT     = 0.93,
-	StrokeT2    = 0.88,
+	StrokeT     = 0.9,
+	StrokeT2    = 0.86,
 
-	Text        = Color3.fromRGB(240, 243, 250),
-	TextDim     = Color3.fromRGB(154, 161, 176),
-	TextMuted   = Color3.fromRGB(103, 110, 126),
+	Text        = Color3.fromRGB(244, 244, 246),
+	TextDim     = Color3.fromRGB(150, 150, 158),
+	TextMuted   = Color3.fromRGB(98, 98, 106),
 
-	Good        = Color3.fromRGB(88, 214, 148),
-	Warn        = Color3.fromRGB(255, 190, 92),
-	Bad         = Color3.fromRGB(255, 96, 96),
+	Good        = Color3.fromRGB(120, 220, 160),
+	Warn        = Color3.fromRGB(230, 200, 130),
+	Bad         = Color3.fromRGB(235, 120, 120),
 }
 
 --==============================================================================
@@ -80,9 +83,9 @@ Nova.Defaults = {
 	PlayerName     = nil,                  -- 默认取显示名
 	PlayerSubtitle = "Premium Edition",
 	Avatar         = nil,                  -- 默认取 Roblox 头像
-	FloatingIcon   = nil,                  -- 悬浮球图片
-	Accent         = Color3.fromRGB(255, 62, 92),
-	Accent2        = Color3.fromRGB(255, 130, 76),
+	FloatingIcon   = nil,                  -- 悬浮窗图片（填了就不显示 Open/Close 文字）
+	Accent         = Color3.fromRGB(255, 255, 255),   -- 主色：黑白方案，白色为强调
+	Accent2        = Color3.fromRGB(178, 178, 186),   -- 辅色：浅灰（渐变尾）
 	ToggleKey      = Enum.KeyCode.RightShift,
 	Columns        = 2,
 	Width          = 1060,                 -- 基准宽（实际大小会按设备视口自适应）
@@ -523,29 +526,26 @@ function Nova:_BuildRoot()
 		Parent = self.Root,
 	})
 
-	-- 假阴影：两层偏移的深色圆角块
-	create("Frame", {
-		Name = "Shadow2",
+	-- 阴影：只在窗口下方压一层极淡的紧贴暗影，避免边缘出现一圈灰雾
+	local sh = create("Frame", {
+		Name = "Shadow",
 		BackgroundColor3 = Color3.fromRGB(0, 0, 0),
-		BackgroundTransparency = 0.72,
-		Size = UDim2.new(1, 26, 1, 30),
-		Position = UDim2.fromOffset(-13, -6),
+		BackgroundTransparency = 0.55,
+		Size = UDim2.new(1, 6, 1, 8),
+		Position = UDim2.fromOffset(-3, -2),
 		ZIndex = 8,
 		Parent = self.Holder,
 	})
-	create("Frame", {
-		Name = "Shadow1",
-		BackgroundColor3 = Color3.fromRGB(0, 0, 0),
-		BackgroundTransparency = 0.62,
-		Size = UDim2.new(1, 14, 1, 16),
-		Position = UDim2.fromOffset(-7, -3),
-		ZIndex = 9,
-		Parent = self.Holder,
+	corner(sh, 18)
+	create("UIGradient", {
+		Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0.6),
+			NumberSequenceKeypoint.new(0.5, 1),
+			NumberSequenceKeypoint.new(1, 0.62),
+		}),
+		Rotation = 90,
+		Parent = sh,
 	})
-	local c1 = self.Holder:FindFirstChild("Shadow2")
-	if c1 then corner(c1, 22) end
-	local c2 = self.Holder:FindFirstChild("Shadow1")
-	if c2 then corner(c2, 18) end
 
 	-- 窗口主体
 	self.Window = create("CanvasGroup", {
@@ -557,54 +557,28 @@ function Nova:_BuildRoot()
 		Parent = self.Holder,
 	})
 	corner(self.Window, 14)
-	stroke(self.Window, self.Theme.Stroke, 1, self.Theme.StrokeT)
-
-	-- 顶部一条 Accent 渐隐光线
-	local accentBar = create("Frame", {
-		Name = "AccentBar",
-		BackgroundColor3 = self.Theme.Accent,
-		Size = UDim2.new(0.42, 0, 0, 2),
-		Position = UDim2.new(0.5, 0, 0, 0),
-		AnchorPoint = Vector2.new(0.5, 0),
-		BorderSizePixel = 0,
-		BackgroundTransparency = 0.25,
-		ZIndex = 12,
-		Parent = self.Window,
-	})
-	gradient(accentBar, self.Theme.Accent, self.Theme.Accent2, 0)
+	stroke(self.Window, self.Theme.Stroke, 1, 0.86)
 
 	self.UIScale = create("UIScale", { Scale = 1, Parent = self.Holder })
 end
 
 --==============================================================================
--- 悬浮球
+-- 悬浮窗（黑白胶囊条）
 --==============================================================================
 function Nova:_BuildFloating()
-	local SIZE = 58
+	local W, H = 108, 38
 
 	self.Floating = create("CanvasGroup", {
 		Name = "Floating",
-		BackgroundColor3 = Color3.fromRGB(0, 0, 0), -- 纯黑底
-		Size = UDim2.fromOffset(SIZE, SIZE),
-		Position = UDim2.new(1, -(SIZE + 26), 0.5, -SIZE / 2),
+		BackgroundColor3 = Color3.fromRGB(0, 0, 0),
+		Size = UDim2.fromOffset(W, H),
+		Position = UDim2.new(1, -(W + 26), 0.5, -H / 2),
 		GroupTransparency = 0,
 		ZIndex = 30,
 		Parent = self.Root,
 	})
-	corner(self.Floating, SIZE / 2)
-	stroke(self.Floating, Color3.fromRGB(255, 255, 255), 1.4, 0.72)
-
-	-- 极淡的外发光（白色描边光晕）
-	self.FloatingGlow = create("Frame", {
-		Name = "Glow",
-		BackgroundColor3 = Color3.fromRGB(255, 255, 255),
-		BackgroundTransparency = 0.93,
-		Size = UDim2.fromOffset(SIZE + 12, SIZE + 12),
-		Position = UDim2.fromOffset(-6, -6),
-		ZIndex = 0,
-		Parent = self.Floating,
-	})
-	corner(self.FloatingGlow, (SIZE + 12) / 2)
+	corner(self.Floating, H / 2)
+	self.FloatingStroke = stroke(self.Floating, Color3.fromRGB(255, 255, 255), 1, 0.78)
 
 	self.FloatingIconHolder = create("Frame", {
 		Name = "IconHolder",
@@ -615,14 +589,14 @@ function Nova:_BuildFloating()
 	})
 	self:_RenderFloatingIcon()
 
-	-- 悬停反馈
+	-- 悬停反馈：只变描边和底色，克制一点
 	self.Floating.MouseEnter:Connect(function()
-		tween(self.Floating, { Size = UDim2.fromOffset(SIZE + 5, SIZE + 5) }, 0.18, Enum.EasingStyle.Back)
-		tween(self.FloatingGlow, { BackgroundTransparency = 0.86 }, 0.18)
+		tween(self.FloatingStroke, { Transparency = 0.3 }, 0.16)
+		tween(self.Floating, { BackgroundColor3 = Color3.fromRGB(22, 22, 24) }, 0.16)
 	end)
 	self.Floating.MouseLeave:Connect(function()
-		tween(self.Floating, { Size = UDim2.fromOffset(SIZE, SIZE) }, 0.18, Enum.EasingStyle.Back)
-		tween(self.FloatingGlow, { BackgroundTransparency = 0.93 }, 0.18)
+		tween(self.FloatingStroke, { Transparency = 0.78 }, 0.16)
+		tween(self.Floating, { BackgroundColor3 = Color3.fromRGB(0, 0, 0) }, 0.16)
 	end)
 
 	-- 拖动 + 点击
@@ -662,19 +636,19 @@ end
 
 function Nova:_RenderFloatingIcon()
 	local holder = self.FloatingIconHolder
-	local old = holder:FindFirstChild("I")
-	if old then old:Destroy() end
+	for _, c in ipairs(holder:GetChildren()) do c:Destroy() end
 	self.FloatingLabel = nil
+	self.FloatingDot = nil
 
 	local cfg = self.Config.FloatingIcon
 
-	-- 自定义图片：仍显示图片，不显示文字
+	-- 自定义图片：铺在胶囊中间，不显示文字
 	if isAsset(cfg) then
 		create("ImageLabel", {
 			Name = "I",
 			Image = cfg,
 			BackgroundTransparency = 1,
-			Size = UDim2.fromOffset(30, 30),
+			Size = UDim2.fromOffset(26, 26),
 			AnchorPoint = Vector2.new(0.5, 0.5),
 			Position = UDim2.fromScale(0.5, 0.5),
 			ZIndex = 3,
@@ -683,17 +657,35 @@ function Nova:_RenderFloatingIcon()
 		return
 	end
 
-	-- 默认：纯白 Open / Close 文字（随主界面开关状态切换）
+	-- 左侧状态点：开启=实心白，关闭=暗淡
+	local dot = create("Frame", {
+		Name = "Dot",
+		BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+		BackgroundTransparency = self._visible and 0 or 0.6,
+		Size = UDim2.fromOffset(9, 9),
+		Position = UDim2.new(0, 17, 0.5, 0),
+		AnchorPoint = Vector2.new(0, 0.5),
+		BorderSizePixel = 0,
+		ZIndex = 3,
+		Parent = holder,
+	})
+	corner(dot, 4.5)
+	stroke(dot, Color3.fromRGB(255, 255, 255), 1, 0.4)
+	self.FloatingDot = dot
+
+	-- 白色 Open / Close 文字（随主界面开关状态切换）
 	local lbl = create("TextLabel", {
 		Name = "I",
 		Text = self._visible and "Close" or "Open",
 		BackgroundTransparency = 1,
 		Font = Enum.Font.GothamBold,
 		TextColor3 = Color3.fromRGB(255, 255, 255),
-		TextSize = 15,
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromScale(0.5, 0.5),
-		Size = UDim2.fromScale(1, 1),
+		TextSize = 13,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextYAlignment = Enum.TextYAlignment.Center,
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = UDim2.new(0, 37, 0.5, 0),
+		Size = UDim2.fromOffset(58, 16),
 		ZIndex = 3,
 		Parent = holder,
 	})
@@ -704,6 +696,9 @@ end
 function Nova:_UpdateFloatingLabel()
 	if self.FloatingLabel then
 		self.FloatingLabel.Text = self._visible and "Close" or "Open"
+	end
+	if self.FloatingDot then
+		tween(self.FloatingDot, { BackgroundTransparency = self._visible and 0 or 0.6 }, 0.18)
 	end
 end
 
@@ -743,33 +738,48 @@ function Nova:_BuildWindow()
 		Parent = self.Sidebar,
 	})
 
-	-- 侧边栏 logo
+	-- 侧边栏 logo（白底黑标）
 	local logo = create("Frame", {
 		Name = "Logo",
-		BackgroundColor3 = T.Accent,
+		BackgroundColor3 = Color3.fromRGB(255, 255, 255),
 		Size = UDim2.fromOffset(40, 40),
 		Position = UDim2.new(0, 14, 0, 18),
 		ZIndex = 13,
 		Parent = self.Sidebar,
 	})
 	corner(logo, 12)
-	gradient(logo, T.Accent, T.Accent2, 45)
-	if self.Config.Icon and isAsset(self.Config.Icon) then
+	gradient(logo, Color3.fromRGB(255, 255, 255), Color3.fromRGB(196, 196, 204), 45)
+
+	local iconCfg = self.Config.Icon
+	if iconCfg and isAsset(iconCfg) then
 		create("ImageLabel", {
-			Image = self.Config.Icon,
+			Image = iconCfg,
 			BackgroundTransparency = 1,
-			Size = UDim2.fromOffset(20, 20),
+			Size = UDim2.fromOffset(22, 22),
 			AnchorPoint = Vector2.new(0.5, 0.5),
 			Position = UDim2.fromScale(0.5, 0.5),
 			ZIndex = 14,
 			Parent = logo,
 		})
-	else
-		icon(logo, self.Config.Icon or "default", 18, Color3.fromRGB(255, 255, 255), {
+	elseif iconCfg and iconCfg ~= "default" then
+		icon(logo, iconCfg, 18, T.Ink, {
 			AnchorPoint = Vector2.new(0.5, 0.5),
 			Position = UDim2.fromScale(0.5, 0.5),
 			ZIndex = 14,
 			Size = UDim2.fromScale(1, 1),
+		})
+	else
+		-- 没自定义图标时用标题首字母，比一个没有含义的菱形清楚
+		create("TextLabel", {
+			Name = "Mark",
+			Text = string.upper(string.sub(self.Config.Title or "N", 1, 1)),
+			BackgroundTransparency = 1,
+			Font = Enum.Font.GothamBlack,
+			TextColor3 = T.Ink,
+			TextSize = 19,
+			Size = UDim2.fromScale(1, 1),
+			ZIndex = 14,
+			Parent = logo,
 		})
 	end
 
@@ -939,51 +949,69 @@ function Nova:_BuildWindow()
 		self:_ApplyFilter()
 	end)
 
-	-- 副侧边栏（横向标签条）
+	-- 副侧边栏（标签条，自动换行，不用横向滚）
 	local tabBar = create("Frame", {
 		Name = "TabBar",
 		BackgroundColor3 = T.Panel,
 		BackgroundTransparency = 0.55,
-		Size = UDim2.new(1, -28, 0, 50),
+		Size = UDim2.new(1, -28, 0, 0),
+		AutomaticSize = Enum.AutomaticSize.Y,
 		Position = UDim2.fromOffset(14, 68),
 		ZIndex = 12,
 		Parent = main,
 	})
 	corner(tabBar, 12)
 	stroke(tabBar, T.Stroke, 1, 0.94)
-	self.TabScroll = create("ScrollingFrame", {
+	padding(tabBar, 8, 8, 8, 8)
+	self.TabBar = tabBar
+
+	self.TabScroll = create("Frame", {
 		Name = "TabScroll",
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
-		Size = UDim2.new(1, -16, 1, 0),
-		Position = UDim2.fromOffset(8, 0),
-		CanvasSize = UDim2.fromOffset(0, 0),
-		AutomaticCanvasSize = Enum.AutomaticSize.X,
-		ScrollingDirection = Enum.ScrollingDirection.X,
-		ScrollBarThickness = 0,
-		ElasticBehavior = Enum.ElasticBehavior.Never,
+		Size = UDim2.new(1, 0, 0, 0),
+		AutomaticSize = Enum.AutomaticSize.Y,
 		ZIndex = 12,
 		Parent = tabBar,
 	})
-	list(self.TabScroll, Enum.FillDirection.Horizontal, 8, Enum.HorizontalAlignment.Left, Enum.VerticalAlignment.Center)
+	create("UIListLayout", {
+		FillDirection = Enum.FillDirection.Horizontal,
+		HorizontalAlignment = Enum.HorizontalAlignment.Left,
+		VerticalAlignment = Enum.VerticalAlignment.Top,
+		Wraps = true,
+		Padding = UDim.new(0, 7),
+		SortOrder = Enum.SortOrder.LayoutOrder,
+		Parent = self.TabScroll,
+	})
 
 	-- 内容区
 	self.Content = create("ScrollingFrame", {
 		Name = "Content",
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
-		Size = UDim2.new(1, -28, 1, -138),
+		Size = UDim2.new(1, -28, 1, -180),
 		Position = UDim2.fromOffset(14, 128),
 		CanvasSize = UDim2.fromOffset(0, 0),
 		AutomaticCanvasSize = Enum.AutomaticSize.Y,
 		ScrollingDirection = Enum.ScrollingDirection.Y,
 		ScrollBarThickness = 4,
-		ScrollBarImageColor3 = T.Accent,
+		ScrollBarImageColor3 = T.Stroke,
 		ScrollBarImageTransparency = 0.55,
 		ElasticBehavior = Enum.ElasticBehavior.Never,
 		ZIndex = 12,
 		Parent = main,
 	})
+
+	-- 标签条高度随换行变化，内容区跟着下移
+	local function relayout()
+		local h = tabBar.AbsoluteSize.Y
+		if h <= 0 then h = 50 end
+		local top = 68 + h + 14
+		self.Content.Position = UDim2.fromOffset(14, top)
+		self.Content.Size = UDim2.new(1, -28, 1, -(top + 14))
+	end
+	self._conns[#self._conns + 1] = tabBar:GetPropertyChangedSignal("AbsoluteSize"):Connect(relayout)
+	relayout()
 end
 
 function Nova:_PlayerName()
@@ -1423,8 +1451,8 @@ function Nova:_ClampFloating()
 	local y = pos.Y.Scale * vp.Y + pos.Y.Offset
 	local w = self.Floating.AbsoluteSize.X
 	local h = self.Floating.AbsoluteSize.Y
-	if w <= 0 then w = 58 end
-	if h <= 0 then h = 58 end
+	if w <= 0 then w = 108 end
+	if h <= 0 then h = 38 end
 	x = clamp(x, 4, math.max(4, vp.X - w - 4))
 	y = clamp(y, 4, math.max(4, vp.Y - h - 4))
 	self.Floating.Position = UDim2.fromOffset(x, y)
@@ -1619,7 +1647,7 @@ function PrimaryPane:Secondary(name, iconName)
 		Name = "Secondary_" .. name,
 		Text = "",
 		AutoButtonColor = false,
-		BackgroundColor3 = T.Card,
+		BackgroundColor3 = Color3.fromRGB(255, 255, 255),
 		BackgroundTransparency = 1,
 		Size = UDim2.fromOffset(0, 34),
 		AutomaticSize = Enum.AutomaticSize.X,
@@ -1667,7 +1695,7 @@ function PrimaryPane:Secondary(name, iconName)
 
 	btn.MouseEnter:Connect(function()
 		if lib.ActiveSecondary == pane then return end
-		tween(btn, { BackgroundTransparency = 0.88 }, 0.14)
+		tween(btn, { BackgroundTransparency = 0.92 }, 0.14)
 		tween(lbl, { TextColor3 = T.Text }, 0.14)
 		tint(ic, T.Text)
 	end)
@@ -1873,7 +1901,7 @@ function SecondaryPane:Select()
 	end
 
 	lib.ActiveSecondary = self
-	tween(self.Button, { BackgroundColor3 = T.Card, BackgroundTransparency = 0.15 }, 0.18)
+	tween(self.Button, { BackgroundColor3 = Color3.fromRGB(255, 255, 255), BackgroundTransparency = 0.9 }, 0.18)
 	tween(self.Underline, { BackgroundTransparency = 0 }, 0.18)
 	tween(self.Label, { TextColor3 = T.Text }, 0.18)
 	tint(self.Icon, T.Accent)
@@ -2081,7 +2109,8 @@ function Section:Toggle(cfg)
 		self.Value = v and true or false
 		tween(knob, {
 			Position = self.Value and UDim2.fromOffset(23, 3) or UDim2.fromOffset(3, 3),
-			BackgroundTransparency = self.Value and 0 or 0.15,
+			BackgroundColor3 = self.Value and T.Ink or Color3.fromRGB(255, 255, 255),
+			BackgroundTransparency = self.Value and 0 or 0.12,
 		}, 0.18, Enum.EasingStyle.Quart)
 		tween(switch, { BackgroundColor3 = self.Value and T.Accent or T.Element }, 0.18)
 		self.Gradient.Transparency = NumberSequence.new(self.Value and 0 or 1)
@@ -2139,15 +2168,15 @@ function Section:Slider(cfg)
 	local track = create("Frame", {
 		Name = "Track",
 		BackgroundColor3 = T.Element,
-		Size = UDim2.fromOffset(150, 7),
+		Size = UDim2.fromOffset(150, 10),
 		Position = UDim2.new(1, -70, 0.5, 0),
 		AnchorPoint = Vector2.new(1, 0.5),
 		BorderSizePixel = 0,
 		ZIndex = 16,
 		Parent = row,
 	})
-	corner(track, 3.5)
-	stroke(track, T.Stroke, 1, 0.92)
+	corner(track, 3)
+	stroke(track, T.Stroke, 1, 0.9)
 
 	local fill = create("Frame", {
 		Name = "Fill",
@@ -2157,20 +2186,21 @@ function Section:Slider(cfg)
 		ZIndex = 17,
 		Parent = track,
 	})
-	corner(fill, 3.5)
+	corner(fill, 3)
 	gradient(fill, T.Accent, T.Accent2, 0)
 
+	-- 长方形推子：白底轨上深色块，灰轨上也看得清
 	local knob = create("Frame", {
 		Name = "Knob",
-		BackgroundColor3 = Color3.fromRGB(255, 255, 255),
-		Size = UDim2.fromOffset(17, 17),
+		BackgroundColor3 = T.Ink,
+		Size = UDim2.fromOffset(12, 20),
 		Position = UDim2.new(0, 0, 0.5, 0),
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		ZIndex = 18,
 		Parent = track,
 	})
-	corner(knob, 8.5)
-	stroke(knob, T.Accent, 2, 0.15)
+	corner(knob, 4)
+	stroke(knob, Color3.fromRGB(255, 255, 255), 1.5, 0.25)
 
 	local function fmt(v)
 		if cfg.Format then return cfg.Format(v) end
@@ -2236,7 +2266,7 @@ function Section:Slider(cfg)
 			or input.UserInputType == Enum.UserInputType.Touch then
 			dragging = true
 			fromInput(input.Position.X)
-			tween(knob, { Size = UDim2.fromOffset(20, 20) }, 0.12, Enum.EasingStyle.Back)
+			tween(knob, { Size = UDim2.fromOffset(12, 22) }, 0.12, Enum.EasingStyle.Back)
 			tween(valueLabel, { TextColor3 = T.Accent }, 0.12)
 		end
 	end)
@@ -2244,7 +2274,7 @@ function Section:Slider(cfg)
 		if input.UserInputType == Enum.UserInputType.MouseButton1
 			or input.UserInputType == Enum.UserInputType.Touch then
 			dragging = false
-			tween(knob, { Size = UDim2.fromOffset(17, 17) }, 0.14, Enum.EasingStyle.Back)
+			tween(knob, { Size = UDim2.fromOffset(12, 20) }, 0.14, Enum.EasingStyle.Back)
 			tween(valueLabel, { TextColor3 = T.TextDim }, 0.14)
 		end
 	end)
@@ -2365,8 +2395,8 @@ function Section:Button(cfg)
 		Text = cfg.Text or "Execute",
 		AutoButtonColor = false,
 		BackgroundColor3 = T.Accent,
-		Font = Enum.Font.GothamMedium,
-		TextColor3 = Color3.fromRGB(255, 255, 255),
+		Font = Enum.Font.GothamBold,
+		TextColor3 = T.Ink,
 		TextSize = 12,
 		Size = UDim2.fromOffset(100, 30),
 		Position = UDim2.new(1, 0, 0.5, 0),
@@ -2376,7 +2406,7 @@ function Section:Button(cfg)
 	})
 	corner(btn, 9)
 	local grad = gradient(btn, T.Accent, T.Accent2, 0)
-	local bStroke = stroke(btn, Color3.fromRGB(255, 255, 255), 1, 0.82)
+	local bStroke = stroke(btn, Color3.fromRGB(0, 0, 0), 1, 0.82)
 
 	btn.MouseEnter:Connect(function()
 		grad.Transparency = NumberSequence.new(0.12)
