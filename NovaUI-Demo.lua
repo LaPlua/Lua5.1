@@ -2,7 +2,7 @@
 ================================================================================
   Nova UI  ·  现代化 Roblox UI 库
 --------------------------------------------------------------------------------
-  版本 : 1.5.0
+  版本 : 1.5.1
   语法 : 兼容 Lua 5.1 / Roblox Luau
   特性 :
     · 黑白配色，无彩色渐变、无外发光，边缘干净
@@ -29,7 +29,7 @@ local LocalPlayer      = Players.LocalPlayer
 
 local Nova = {}
 Nova.__index = Nova
-Nova.Version = "1.5.0"
+Nova.Version = "1.5.1"
 Nova.Flags   = {}
 
 --==============================================================================
@@ -931,6 +931,14 @@ function Nova:_BuildWindow()
 	corner(logo, 11)
 	gradient(logo, Color3.fromRGB(255, 255, 255), Color3.fromRGB(196, 196, 204), 45)
 	self.LogoPlate = logo
+	-- 内容单独放一层：重绘时只清这一层，绝不动 plate 上的 UICorner / UIGradient（否则圆角会被删掉）
+	self.LogoContent = create("Frame", {
+		Name = "Content",
+		BackgroundTransparency = 1,
+		Size = UDim2.fromScale(1, 1),
+		ZIndex = 13,
+		Parent = logo,
+	})
 	self:_RenderLogo()
 
 	-- 主栏按钮容器（图标多了可以上下滑动）
@@ -1251,9 +1259,9 @@ function Nova:_LoadIcon()
 end
 
 function Nova:_RenderLogo()
-	local plate = self.LogoPlate
-	if not plate then return end
-	for _, c in ipairs(plate:GetChildren()) do c:Destroy() end
+	local holder = self.LogoContent
+	if not holder then return end
+	for _, c in ipairs(holder:GetChildren()) do c:Destroy() end
 
 	local T = self.Theme
 	local img = self:_BrandImage()
@@ -1267,7 +1275,7 @@ function Nova:_RenderLogo()
 			Position = UDim2.fromScale(0.5, 0.5),
 			ScaleType = Enum.ScaleType.Fit,
 			ZIndex = 14,
-			Parent = plate,
+			Parent = holder,
 		})
 		return
 	end
@@ -1275,7 +1283,7 @@ function Nova:_RenderLogo()
 	local iconCfg = self.Config.Icon
 	-- 网络图还没下载完时不画图标：先用首字母占位，避免闪一个不相干的矢量图
 	if iconCfg and not isHttpUrl(iconCfg) and iconCfg ~= "default" and iconCfg ~= "" then
-		icon(plate, iconCfg, 20, T.Ink, {
+		icon(holder, iconCfg, 20, T.Ink, {
 			AnchorPoint = Vector2.new(0.5, 0.5),
 			Position = UDim2.fromScale(0.5, 0.5),
 			ZIndex = 14,
@@ -1294,7 +1302,7 @@ function Nova:_RenderLogo()
 		TextSize = 17,
 		Size = UDim2.fromScale(1, 1),
 		ZIndex = 14,
-		Parent = plate,
+		Parent = holder,
 	})
 end
 
