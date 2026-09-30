@@ -1033,51 +1033,13 @@ function Nova:_BuildWindow()
 		Parent = header,
 	})
 
-	-- 顶栏右侧按钮
-	local function headerButton(name, glyph, hoverColor)
-		local b = create("TextButton", {
-			Name = name,
-			Text = "",
-			AutoButtonColor = false,
-			BackgroundColor3 = T.Element,
-			BackgroundTransparency = 1,
-			Size = UDim2.fromOffset(30, 30),
-			AnchorPoint = Vector2.new(1, 0.5),
-			ZIndex = 13,
-			Parent = header,
-		})
-		corner(b, 9)
-		local ic = icon(b, glyph, 14, T.TextDim, {
-			AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = UDim2.fromScale(0.5, 0.5),
-			ZIndex = 14,
-			Size = UDim2.fromScale(1, 1),
-		})
-		b.MouseEnter:Connect(function()
-			tween(b, { BackgroundTransparency = 0.9 }, 0.14)
-			tint(ic, hoverColor or T.Text)
-		end)
-		b.MouseLeave:Connect(function()
-			tween(b, { BackgroundTransparency = 1 }, 0.14)
-			tint(ic, T.TextDim)
-		end)
-		return b, ic
-	end
-
-	local closeBtn = headerButton("Close", "close", T.Bad)
-	closeBtn.Position = UDim2.new(1, -10, 0.5, 0)
-	closeBtn.MouseButton1Click:Connect(function() self:Close() end)
-
-	local minBtn = headerButton("Minimize", "minimize", T.Text)
-	minBtn.Position = UDim2.new(1, -44, 0.5, 0)
-
-	-- 搜索框
+	-- 搜索框（原来的「最小化 / 关闭」按钮已去掉：开关界面统一走悬浮窗）
 	local searchBox = create("Frame", {
 		Name = "SearchBox",
 		BackgroundColor3 = T.Element,
 		BackgroundTransparency = 0.35,
 		Size = UDim2.fromOffset(160, 28),
-		Position = UDim2.new(1, -82, 0.5, 0),
+		Position = UDim2.new(1, -10, 0.5, 0),
 		AnchorPoint = Vector2.new(1, 0.5),
 		ZIndex = 13,
 		Parent = header,
