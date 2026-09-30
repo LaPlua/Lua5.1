@@ -2,11 +2,13 @@
 ================================================================================
   Nova UI  ·  现代化 Roblox UI 库
 --------------------------------------------------------------------------------
-  版本 : 1.4.0
+  版本 : 1.5.0
   语法 : 兼容 Lua 5.1 / Roblox Luau
   特性 :
     · 黑白配色，无彩色渐变、无外发光，边缘干净
     · 悬浮窗：纯黑胶囊条 + 白描边（深色场景下也不会隐身）+ 品牌名，默认停靠屏幕正中顶端，可拖动
+    · 品牌图自定义：Icon = "https://xxx/logo.png"，自动下载并缓存，悬浮胶囊徽标 + 左上角 logo 共用同一张
+      （执行器缺 writefile/getcustomasset/request 或下载失败 → 自动回退字母徽标，不报错不卡界面）
     · 主侧边栏（可上下滑动）+ 副侧边栏（顶部单行标签，每个主栏只显示自己的那组附属标签，可左右滑动）
     · 左上角玩家头像 + 玩家名字（均可自定义）
     · 内置矢量图标库（纯 Frame/UIStroke 绘制，无字体与 emoji 依赖），也可用 rbxassetid 覆盖
@@ -27,7 +29,7 @@ local LocalPlayer      = Players.LocalPlayer
 
 local Nova = {}
 Nova.__index = Nova
-Nova.Version = "1.4.0"
+Nova.Version = "1.5.0"
 Nova.Flags   = {}
 
 --==============================================================================
@@ -80,11 +82,16 @@ Nova.Defaults = {
 	Title          = "Nova",
 	Subtitle       = "",
 	Brand          = "Lev Hub",            -- 悬浮胶囊上的品牌名
-	Icon           = nil,                  -- 侧边栏顶部 logo（图片/图标名）
+	-- 品牌图：三种写法都行，悬浮胶囊徽标 + 侧边栏左上角 logo 共用同一张
+	--   "https://xxx/logo.png"  网络图片（下载一次后本地缓存）
+	--   "rbxassetid://123456"   Roblox 资源
+	--   "shield"                内置矢量图标名
+	Icon           = nil,
+	FloatLetter    = nil,                  -- 取不到品牌图时悬浮徽标显示的字母（默认取品牌名首字母）
 	PlayerName     = nil,                  -- 默认取显示名
 	PlayerSubtitle = "Premium Edition",
 	Avatar         = nil,                  -- 默认取 Roblox 头像
-	FloatingIcon   = nil,                  -- 悬浮胶囊左侧徽标图片（留空则用品牌首字母）
+	FloatingIcon   = nil,                  -- 只给悬浮胶囊用的图（留空则跟 Icon 走）
 	Accent         = Color3.fromRGB(255, 255, 255),   -- 主色：黑白方案，白色为强调
 	Accent2        = Color3.fromRGB(178, 178, 186),   -- 辅色：浅灰（渐变尾）
 	ToggleKey      = Enum.KeyCode.RightShift,
@@ -183,6 +190,111 @@ end
 local function isAsset(v)
 	if type(v) ~= "string" then return false end
 	return v:sub(1, 10) == "rbxassetid" or v:sub(1, 8) == "rbxthumb"
+end
+
+--==============================================================================
+-- 自定义品牌图：Icon = "https://xxx/logo.png"
+--   request → writefile → getcustomasset
+--   下载一次后缓存在 NovaUI/assets/，下次启动直接读本地（秒加载）
+--   执行器缺能力 / 下载失败 → 自动回退字母徽标，不会报错也不会卡住界面
+--==============================================================================
+local function pickHttpGet()
+	if type(request) == "function" then return request end
+	local ok1, synT = pcall(function() return syn end)
+	if ok1 and type(synT) == "table" and type(synT.request) == "function" then return synT.request end
+	local ok2, httpReq = pcall(function() return http_request end)
+	if ok2 and type(httpReq) == "function" then return httpReq end
+	return nil
+end
+
+local function toCustomAsset(path)
+	if type(getcustomasset) == "function" then
+		local ok, v = pcall(getcustomasset, path)
+		if ok and v then return v end
+	end
+	if type(getsynasset) == "function" then
+		local ok, v = pcall(getsynasset, path)
+		if ok and v then return v end
+	end
+	return nil
+end
+
+local function hasFileApi()
+	return type(writefile) == "function"
+		and type(isfile) == "function"
+		and type(makefolder) == "function"
+end
+
+local function isHttpUrl(v)
+	if type(v) ~= "string" then return false end
+	return v:sub(1, 7) == "http://" or v:sub(1, 8) == "https://"
+end
+
+local HttpGet = pickHttpGet()
+local ImageCache = {}   -- url -> 已解析的 asset 路径
+
+-- 用 URL 做 hash 当文件名：同图只下一次，换 URL 必然重新下载
+local function imageFileName(url)
+	local h = 5381
+	for i = 1, #url do
+		h = (h * 33 + string.byte(url, i)) % 4294967296
+	end
+	local ext = string.lower(url:match("%.([%a%d]+)$") or "png")
+	if ext ~= "png" and ext ~= "jpg" and ext ~= "jpeg"
+		and ext ~= "webp" and ext ~= "gif" then
+		ext = "png"
+	end
+	return ("nv_%d.%s"):format(h, ext)
+end
+
+-- 返回能直接赋给 ImageLabel.Image 的路径；nil 表示拿不到（调用方自行回退）
+local function resolveImage(url)
+	if not isHttpUrl(url) then return nil end
+	local hit = ImageCache[url]
+	if hit then return hit end
+	if not HttpGet or not hasFileApi() then return nil end
+
+	local dir = "NovaUI/assets"
+	local path = dir .. "/" .. imageFileName(url)
+
+	pcall(function()
+		if type(isfolder) == "function" and not isfolder(dir) then
+			makefolder(dir)
+		end
+	end)
+
+	-- 命中本地缓存 → 不再联网
+	local exist = false
+	pcall(function() exist = isfile(path) end)
+	if exist then
+		local asset = toCustomAsset(path)
+		if asset then
+			ImageCache[url] = asset
+			return asset
+		end
+	end
+
+	-- 下载 → 落盘 → 转 asset
+	local body
+	local okReq = pcall(function()
+		local res = HttpGet({ Url = url, Method = "GET" })
+		if type(res) == "table" then
+			body = res.Body or res.body
+		elseif type(res) == "string" then
+			body = res
+		end
+	end)
+	if not okReq or type(body) ~= "string" or #body == 0 then return nil end
+
+	local okWrite = pcall(writefile, path, body)
+	if not okWrite then return nil end
+
+	local asset = toCustomAsset(path)
+	if asset then
+		ImageCache[url] = asset
+		return asset
+	end
+	return nil
 end
 
 -- 在 24×24 逻辑坐标里绘制矢量图标：只用 Frame + UICorner + UIStroke
@@ -477,6 +589,8 @@ function Nova.new(config)
 	self._popup      = nil
 	self._visible    = false
 	self.SearchQuery = ""
+	self._iconAsset  = nil
+	self._iconToken  = 0
 
 	self:_BuildRoot()
 	self:_BuildFloating()
@@ -485,6 +599,7 @@ function Nova.new(config)
 	self:_ApplyScale()
 	self:_HookViewport()
 	self:_HookKeybind()
+	self:_LoadIcon()
 
 	if cfg.StartOpen then
 		self:Open()
@@ -672,41 +787,48 @@ function Nova:_RenderFloatingIcon()
 	self.FloatingDot = nil
 
 	local brand = self.Config.Brand or "Lev Hub"
-	local asset = self.Config.FloatingIcon
 	local T = self.Theme
 
-	-- 左侧品牌徽标：白底圆角方块 + 品牌首字母（填 rbxassetid 则用图片）
+	-- 左侧品牌徽标：白底圆角方块 + 图片 / 首字母（Icon 或 FloatingIcon 有图就用图）
 	local mark = create("Frame", {
 		Name = "Mark",
 		BackgroundColor3 = Color3.fromRGB(255, 255, 255),
-		Size = UDim2.fromOffset(28, 28),
-		Position = UDim2.new(0, 8, 0.5, 0),
+		Size = UDim2.fromOffset(32, 32),
+		Position = UDim2.new(0, 7, 0.5, 0),
 		AnchorPoint = Vector2.new(0, 0.5),
 		ZIndex = 3,
 		Parent = holder,
 	})
-	corner(mark, 9)
+	corner(mark, 10)
 	gradient(mark, Color3.fromRGB(255, 255, 255), Color3.fromRGB(186, 186, 194), 45)
 	self.FloatingMark = mark
 
-	if isAsset(asset) then
+	local img = self:_FloatImage()
+	if img then
 		create("ImageLabel", {
 			Name = "Img",
-			Image = asset,
+			Image = img,
 			BackgroundTransparency = 1,
-			Size = UDim2.fromScale(1, 1),
+			Size = UDim2.fromOffset(26, 26),
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.5),
 			ScaleType = Enum.ScaleType.Fit,
 			ZIndex = 4,
 			Parent = mark,
 		})
 	else
+		-- 取不到图 → 回退字母徽标（FloatLetter 优先，否则品牌名首字母）
+		local letter = self.Config.FloatLetter
+		if type(letter) ~= "string" or letter == "" then
+			letter = string.sub(brand, 1, 1)
+		end
 		create("TextLabel", {
 			Name = "Letter",
-			Text = string.upper(string.sub(brand, 1, 1)),
+			Text = string.upper(string.sub(letter, 1, 1)),
 			BackgroundTransparency = 1,
 			Font = Enum.Font.GothamBlack,
 			TextColor3 = T.Ink,
-			TextSize = 14,
+			TextSize = 15,
 			Size = UDim2.fromScale(1, 1),
 			ZIndex = 4,
 			Parent = mark,
@@ -808,39 +930,8 @@ function Nova:_BuildWindow()
 	})
 	corner(logo, 11)
 	gradient(logo, Color3.fromRGB(255, 255, 255), Color3.fromRGB(196, 196, 204), 45)
-
-	local iconCfg = self.Config.Icon
-	if iconCfg and isAsset(iconCfg) then
-		create("ImageLabel", {
-			Image = iconCfg,
-			BackgroundTransparency = 1,
-			Size = UDim2.fromOffset(20, 20),
-			AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = UDim2.fromScale(0.5, 0.5),
-			ZIndex = 14,
-			Parent = logo,
-		})
-	elseif iconCfg and iconCfg ~= "default" then
-		icon(logo, iconCfg, 17, T.Ink, {
-			AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = UDim2.fromScale(0.5, 0.5),
-			ZIndex = 14,
-			Size = UDim2.fromScale(1, 1),
-		})
-	else
-		-- 没自定义图标时用标题首字母，比一个没有含义的菱形清楚
-		create("TextLabel", {
-			Name = "Mark",
-			Text = string.upper(string.sub(self.Config.Title or "N", 1, 1)),
-			BackgroundTransparency = 1,
-			Font = Enum.Font.GothamBlack,
-			TextColor3 = T.Ink,
-			TextSize = 17,
-			Size = UDim2.fromScale(1, 1),
-			ZIndex = 14,
-			Parent = logo,
-		})
-	end
+	self.LogoPlate = logo
+	self:_RenderLogo()
 
 	-- 主栏按钮容器（图标多了可以上下滑动）
 	self.PrimaryHolder = create("ScrollingFrame", {
@@ -1118,6 +1209,95 @@ function Nova:_PlayerName()
 	return "Player"
 end
 
+--==============================================================================
+-- 品牌图 / 侧边栏 logo
+--==============================================================================
+-- 当前可用的品牌图路径（网络图优先，其次 rbxassetid/rbxthumb），没有则 nil
+function Nova:_BrandImage()
+	if self._iconAsset then return self._iconAsset end
+	local v = self.Config.Icon
+	if isAsset(v) then return v end
+	return nil
+end
+
+-- 悬浮胶囊专用的图：FloatingIcon 优先，其次跟 Icon 走
+function Nova:_FloatImage()
+	if self._iconAsset then return self._iconAsset end
+	local f = self.Config.FloatingIcon
+	if isAsset(f) then return f end
+	if isAsset(self.Config.Icon) then return self.Config.Icon end
+	return nil
+end
+
+-- 网络图异步加载：先出字母徽标，拿到图再替换，绝不卡住界面
+function Nova:_LoadIcon()
+	self._iconAsset = nil
+	local url = self.Config.Icon
+	if not isHttpUrl(url) then return end
+
+	-- 递增令牌：中途换图时，旧请求回来的结果会被丢弃
+	self._iconToken = (self._iconToken or 0) + 1
+	local token = self._iconToken
+
+	task.spawn(function()
+		local asset = resolveImage(url)
+		if not asset then return end
+		if self._iconToken ~= token then return end
+		if not self.Root or not self.Root.Parent then return end
+		self._iconAsset = asset
+		self:_RenderLogo()
+		self:_RenderFloatingIcon()
+	end)
+end
+
+function Nova:_RenderLogo()
+	local plate = self.LogoPlate
+	if not plate then return end
+	for _, c in ipairs(plate:GetChildren()) do c:Destroy() end
+
+	local T = self.Theme
+	local img = self:_BrandImage()
+	if img then
+		create("ImageLabel", {
+			Name = "Img",
+			Image = img,
+			BackgroundTransparency = 1,
+			Size = UDim2.fromOffset(26, 26),
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.5),
+			ScaleType = Enum.ScaleType.Fit,
+			ZIndex = 14,
+			Parent = plate,
+		})
+		return
+	end
+
+	local iconCfg = self.Config.Icon
+	-- 网络图还没下载完时不画图标：先用首字母占位，避免闪一个不相干的矢量图
+	if iconCfg and not isHttpUrl(iconCfg) and iconCfg ~= "default" and iconCfg ~= "" then
+		icon(plate, iconCfg, 20, T.Ink, {
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.5),
+			ZIndex = 14,
+			Size = UDim2.fromOffset(20, 20),
+		})
+		return
+	end
+
+	-- 没自定义图标时用标题首字母，比一个没有含义的菱形清楚
+	create("TextLabel", {
+		Name = "Mark",
+		Text = string.upper(string.sub(self.Config.Title or "N", 1, 1)),
+		BackgroundTransparency = 1,
+		Font = Enum.Font.GothamBlack,
+		TextColor3 = T.Ink,
+		TextSize = 17,
+		Size = UDim2.fromScale(1, 1),
+		ZIndex = 14,
+		Parent = plate,
+	})
+end
+
 function Nova:_RenderAvatar()
 	local holder = self.AvatarHolder
 	local old = holder:FindFirstChild("I")
@@ -1148,7 +1328,7 @@ function Nova:_RenderAvatar()
 			AnchorPoint = Vector2.new(0.5, 0.5),
 			Position = UDim2.fromScale(0.5, 0.5),
 			ZIndex = 14,
-			Size = UDim2.fromScale(1, 1),
+			Size = UDim2.fromOffset(18, 18),
 		})
 	end
 	local lbl = holder:FindFirstChild("I")
@@ -1493,6 +1673,22 @@ end
 function Nova:SetAvatar(v)
 	self.Config.Avatar = v
 	self:_RenderAvatar()
+end
+
+-- 运行时换品牌图：悬浮胶囊徽标 + 侧边栏左上角 logo 一起换
+-- 传 "https://xxx.png" / "rbxassetid://xxx" / 内置图标名 / nil（还原默认）
+function Nova:SetIcon(v)
+	self.Config.Icon = v
+	self._iconAsset = nil
+	self:_LoadIcon()
+	self:_RenderLogo()
+	self:_RenderFloatingIcon()
+end
+
+-- 运行时换悬浮徽标的回退字母
+function Nova:SetFloatLetter(v)
+	self.Config.FloatLetter = v
+	self:_RenderFloatingIcon()
 end
 
 function Nova:SetPlayerName(name)
@@ -2772,11 +2968,16 @@ local ok, err = pcall(function()
 		Title          = "NOVA",
 		Subtitle       = "Interface Suite",
 		Brand          = "Lev Hub",      -- 悬浮胶囊上显示的品牌名
-		Icon           = nil,          -- nil = 白底黑字的标题首字母；也可填图片 id 或图标名
+		-- 品牌图：悬浮胶囊徽标 + 侧边栏左上角 logo 共用这一张
+		--   填 "https://xxx/logo.png" → 自动下载并缓存（NovaUI/assets/），失败自动回退字母
+		--   也可以填 "rbxassetid://123456" 或内置图标名（如 "shield"）
+		--   留空则用标题首字母
+		Icon           = "",
+		FloatLetter    = "L",          -- 拿不到品牌图时，悬浮徽标显示这个字母（默认品牌名首字母）
 		PlayerName     = "Past Owl",
 		PlayerSubtitle = "Till: 1 mar 2026",
-		Avatar         = nil,        -- 改成 "rbxassetid://xxxx" 可自定义头像
-		FloatingIcon   = nil,        -- 改成 "rbxassetid://xxxx" 可自定义悬浮窗图片
+		Avatar         = nil,        -- 改成 "rbxassetid://xxxx" 可只改左上角头像
+		FloatingIcon   = nil,        -- 改成 "rbxassetid://xxxx" 可只改悬浮窗徽标
 		Accent         = Color3.fromRGB(255, 255, 255),
 		Accent2        = Color3.fromRGB(178, 178, 186),
 		ToggleKey      = Enum.KeyCode.RightShift,
