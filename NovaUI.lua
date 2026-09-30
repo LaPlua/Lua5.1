@@ -2,12 +2,12 @@
 ================================================================================
   Nova UI  ·  现代化 Roblox UI 库
 --------------------------------------------------------------------------------
-  版本 : 1.3.0
+  版本 : 1.4.0
   语法 : 兼容 Lua 5.1 / Roblox Luau
   特性 :
     · 黑白配色，无彩色渐变、无外发光，边缘干净
     · 悬浮窗：纯黑胶囊条 + 白描边（深色场景下也不会隐身）+ 品牌名，默认停靠屏幕正中顶端，可拖动
-    · 主侧边栏（可上下滑动）+ 副侧边栏（单行标签，带名字，可左右滑动）
+    · 主侧边栏（可上下滑动）+ 副侧边栏（顶部单行标签，每个主栏只显示自己的那组附属标签，可左右滑动）
     · 左上角玩家头像 + 玩家名字（均可自定义）
     · 内置矢量图标库（纯 Frame/UIStroke 绘制，无字体与 emoji 依赖），也可用 rbxassetid 覆盖
     · 开关 / 滑块（长方形推子） / 下拉 / 按钮 / 标签 / 分割线 / 按键绑定 / 输入框
@@ -27,7 +27,7 @@ local LocalPlayer      = Players.LocalPlayer
 
 local Nova = {}
 Nova.__index = Nova
-Nova.Version = "1.3.0"
+Nova.Version = "1.4.0"
 Nova.Flags   = {}
 
 --==============================================================================
@@ -596,31 +596,20 @@ end
 function Nova:_BuildFloating()
 	local W, H = 176, 44
 
-	self.Floating = create("CanvasGroup", {
+	-- 用普通 Frame（不用 CanvasGroup）：实心黑底 + 白描边，任何设备 / 背景上都清晰可见
+	self.Floating = create("Frame", {
 		Name = "Floating",
 		BackgroundColor3 = Color3.fromRGB(0, 0, 0),
+		BackgroundTransparency = 0,
 		Size = UDim2.fromOffset(W, H),
 		Position = UDim2.new(0.5, 0, 0, 16),   -- 初始位置：屏幕正中顶端
 		AnchorPoint = Vector2.new(0.5, 0),
-		GroupTransparency = 0,
 		ZIndex = 30,
 		Parent = self.Root,
 	})
 	corner(self.Floating, H / 2)
 	-- 白色描边给足对比度，纯黑胶囊在深色场景里也不会「隐身」
 	self.FloatingStroke = stroke(self.Floating, Color3.fromRGB(255, 255, 255), 1.5, 0.1)
-
-	-- 极淡的内侧高光，让黑胶囊有一点层次（不是外发光）
-	create("UIGradient", {
-		Color = ColorSequence.new(Color3.fromRGB(255, 255, 255), Color3.fromRGB(255, 255, 255)),
-		Transparency = NumberSequence.new({
-			NumberSequenceKeypoint.new(0, 0.935),
-			NumberSequenceKeypoint.new(0.55, 1),
-			NumberSequenceKeypoint.new(1, 0.975),
-		}),
-		Rotation = 90,
-		Parent = self.Floating,
-	})
 
 	self.FloatingIconHolder = create("Frame", {
 		Name = "IconHolder",
@@ -724,18 +713,19 @@ function Nova:_RenderFloatingIcon()
 		})
 	end
 
-	-- 品牌名
+	-- 品牌名（左对齐、垂直居中，位置写死，不会因触摸/缩放而漂移）
 	create("TextLabel", {
 		Name = "Brand",
 		Text = brand,
 		BackgroundTransparency = 1,
 		Font = Enum.Font.GothamBold,
 		TextColor3 = Color3.fromRGB(255, 255, 255),
-		TextSize = 13.5,
+		TextSize = 13,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextYAlignment = Enum.TextYAlignment.Center,
-		Size = UDim2.fromOffset(78, 18),
-		Position = UDim2.new(0, 43, 0.5, 0),
+		TextTruncate = Enum.TextTruncate.AtEnd,
+		Size = UDim2.fromOffset(68, 18),
+		Position = UDim2.new(0, 44, 0.5, 0),
 		AnchorPoint = Vector2.new(0, 0.5),
 		ZIndex = 3,
 		Parent = holder,
@@ -747,13 +737,12 @@ function Nova:_RenderFloatingIcon()
 		Text = self._visible and "Close" or "Open",
 		BackgroundTransparency = 1,
 		Font = Enum.Font.GothamMedium,
-		TextColor3 = self._visible and Color3.fromRGB(255, 255, 255)
-			or Color3.fromRGB(148, 148, 158),
+		TextColor3 = Color3.fromRGB(255, 255, 255),
 		TextSize = 11,
-		TextXAlignment = Enum.TextXAlignment.Right,
+		TextXAlignment = Enum.TextXAlignment.Center,
 		TextYAlignment = Enum.TextYAlignment.Center,
-		Size = UDim2.fromOffset(42, 16),
-		Position = UDim2.new(1, -12, 0.5, 0),
+		Size = UDim2.fromOffset(46, 18),
+		Position = UDim2.new(1, -8, 0.5, 0),
 		AnchorPoint = Vector2.new(1, 0.5),
 		ZIndex = 3,
 		Parent = holder,
@@ -767,7 +756,7 @@ function Nova:_UpdateFloatingLabel()
 		self.FloatingLabel.Text = self._visible and "Close" or "Open"
 		tween(self.FloatingLabel, {
 			TextColor3 = self._visible and Color3.fromRGB(255, 255, 255)
-				or Color3.fromRGB(148, 148, 158),
+				or Color3.fromRGB(150, 150, 160),
 		}, 0.18)
 	end
 end
@@ -1046,6 +1035,9 @@ function Nova:_BuildWindow()
 	corner(tabBar, 10)
 	self.TabBar = tabBar
 	self.TabH = TAB_H
+	self.TabBarY = TABBAR_Y
+	self.ContentY = CONTENT_Y
+	self.ContentYNoTab = 14
 
 	-- 单行横向滚动：原生滚轮 / 触摸拖动，只有标签超出宽度时才需要滑动
 	local tabScroll = create("ScrollingFrame", {
@@ -1091,6 +1083,30 @@ function Nova:_BuildWindow()
 		ZIndex = 12,
 		Parent = main,
 	})
+end
+
+--==============================================================================
+-- 顶部副侧边栏（附属标签）
+-- 每个主侧边栏只管自己的那组附属标签：切换主栏时整条标签条会跟着换内容
+--==============================================================================
+function Nova:_RefreshTabs()
+	local primary = self.ActivePrimary
+	local shown = 0
+	if primary then
+		for i = 1, #primary.Secondaries do
+			if primary.Secondaries[i].Button.Visible then
+				shown = shown + 1
+			end
+		end
+	end
+
+	-- 当前主栏没有任何附属标签时，整条标签条隐藏，内容区上移
+	local hasTabs = shown > 0
+	self.TabBar.Visible = hasTabs
+	local y = hasTabs and self.ContentY or self.ContentYNoTab
+	self.Content.Position = UDim2.fromOffset(14, y)
+	self.Content.Size = UDim2.new(1, -28, 1, -(y + 14))
+	self.TabScroll.CanvasPosition = Vector2.new(0, 0)
 end
 
 function Nova:_PlayerName()
@@ -1435,7 +1451,6 @@ function Nova:Open()
 	tween(self.Holder, {
 		Size = UDim2.fromOffset(self.Config.Width, self.Config.Height),
 	}, 0.3, Enum.EasingStyle.Quart)
-	tween(self.Floating, { GroupTransparency = 0 }, 0.2)
 end
 
 function Nova:Close()
@@ -1447,7 +1462,6 @@ function Nova:Close()
 	tween(self.Holder, {
 		Size = UDim2.fromOffset(self.Config.Width * 0.95, self.Config.Height * 0.95),
 	}, 0.18, Enum.EasingStyle.Quart)
-	tween(self.Floating, { GroupTransparency = 0 }, 0.2)
 	task.delay(0.2, function()
 		if not self._visible then
 			self.Holder.Visible = false
@@ -1513,6 +1527,9 @@ end
 
 function Nova:_ShowTip(text, gui)
 	if not self.Tip then return end
+	-- 触摸设备不弹提示：手指抬起后不会触发 MouseLeave，提示会一直糊在屏幕上
+	local ok, last = pcall(function() return UserInputService:GetLastInputType() end)
+	if ok and last == Enum.UserInputType.Touch then return end
 	self._tipToken = (self._tipToken or 0) + 1
 	local w = self:_TextWidth(text, 11, Enum.Font.GothamMedium) + 20
 	self.Tip.Size = UDim2.fromOffset(w, 26)
@@ -1744,6 +1761,8 @@ function PrimaryPane:Secondary(name, iconName)
 		BackgroundTransparency = 1,
 		Size = UDim2.fromOffset(btnW, tabH),
 		LayoutOrder = #self.Secondaries + 1,
+		-- 默认隐藏：只有自己的主侧边栏被选中时才显示（每个主栏只展示自己的附属标签）
+		Visible = false,
 		ZIndex = 13,
 		Parent = lib.TabScroll,
 	})
@@ -1821,6 +1840,12 @@ function PrimaryPane:Secondary(name, iconName)
 
 	self.Secondaries[#self.Secondaries + 1] = pane
 
+	-- 这个附属标签属于当前正在展示的主栏 → 立刻显示出来
+	if lib.ActivePrimary == self then
+		btn.Visible = true
+	end
+	lib:_RefreshTabs()
+
 	if not lib.ActiveSecondary then
 		pane:Select()
 	end
@@ -1842,7 +1867,9 @@ function PrimaryPane:Select()
 		tween(prev.Button, { BackgroundTransparency = 1 }, 0.16)
 		tween(prev.Accent, { BackgroundTransparency = 1, Size = UDim2.new(0, 3, 0, 0) }, 0.16)
 		tint(prev.Icon, T.TextMuted)
+		-- 收起上一个主栏的附属标签和内容页
 		for i = 1, #prev.Secondaries do
+			prev.Secondaries[i].Button.Visible = false
 			prev.Secondaries[i].Page.Visible = false
 		end
 	end
@@ -1851,6 +1878,12 @@ function PrimaryPane:Select()
 	tween(self.Button, { BackgroundColor3 = T.Accent, BackgroundTransparency = 0.86 }, 0.18)
 	tween(self.Accent, { BackgroundTransparency = 0, Size = UDim2.new(0, 3, 0, 18) }, 0.22, Enum.EasingStyle.Quint)
 	tint(self.Icon, T.Text)
+
+	-- 顶部标签条换成这个主栏自己的附属标签
+	for i = 1, #self.Secondaries do
+		self.Secondaries[i].Button.Visible = true
+	end
+	lib:_RefreshTabs()
 
 	if self.Secondaries[1] then
 		self.Secondaries[1]:Select()
@@ -1890,17 +1923,6 @@ function SecondaryPane:Section(title)
 	})
 	corner(card, 12)
 	stroke(card, T.Stroke, 1, T.StrokeT)
-	-- 极淡的纵向渐变，给卡片一点体积感
-	create("UIGradient", {
-		Color = ColorSequence.new(Color3.fromRGB(255, 255, 255), Color3.fromRGB(255, 255, 255)),
-		Transparency = NumberSequence.new({
-			NumberSequenceKeypoint.new(0, 0.975),
-			NumberSequenceKeypoint.new(0.5, 0.988),
-			NumberSequenceKeypoint.new(1, 0.975),
-		}),
-		Rotation = 90,
-		Parent = card,
-	})
 	padding(card, 12, 12, 12, 12)
 	list(card, Enum.FillDirection.Vertical, 8)
 
