@@ -698,6 +698,7 @@ function Nova:_BuildRoot()
 		BackgroundColor3 = self.Theme.Window,
 		BackgroundTransparency = 0,
 		Size = UDim2.fromScale(1, 1),
+		ClipsDescendants = true,   -- 硬裁剪：任何子元素都不可能渲染到主窗口外面
 		ZIndex = 10,
 		Parent = self.Holder,
 	})
