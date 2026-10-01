@@ -691,16 +691,30 @@ function Nova:_BuildRoot()
 	})
 
 	-- 窗口主体
-	self.Window = create("CanvasGroup", {
+	-- 必须是普通 Frame，不能用 CanvasGroup：CanvasGroup 会把整棵子树渲染成一张纹理，
+	-- 外层 UIScale 放大后（大屏 Scale 会到 1.2~1.4）文字被插值缩放，就是“糊”的根源。
+	self.Window = create("Frame", {
 		Name = "Window",
 		BackgroundColor3 = self.Theme.Window,
+		BackgroundTransparency = 0,
 		Size = UDim2.fromScale(1, 1),
-		GroupTransparency = 1,
 		ZIndex = 10,
 		Parent = self.Holder,
 	})
 	corner(self.Window, 14)
 	stroke(self.Window, self.Theme.Stroke, 1, 0.86)
+
+	-- 淡入淡出遮罩：与窗口同色同圆角，盖在最顶层，只靠它的透明度做开关动画。
+	-- 这样正文始终是矢量渲染，清晰不糊；遮罩是普通 Frame 不吃输入，不影响点击。
+	self.Fade = create("Frame", {
+		Name = "Fade",
+		BackgroundColor3 = self.Theme.Window,
+		BackgroundTransparency = 1,
+		Size = UDim2.fromScale(1, 1),
+		ZIndex = 200,
+		Parent = self.Holder,
+	})
+	corner(self.Fade, 14)
 
 	self.UIScale = create("UIScale", { Scale = 1, Parent = self.Holder })
 end
@@ -1599,9 +1613,9 @@ function Nova:Open()
 	self._visible = true
 	self:_UpdateFloatingLabel()
 	self.Holder.Visible = true
-	self.Window.GroupTransparency = 1
+	if self.Fade then self.Fade.BackgroundTransparency = 0 end
 	self.Holder.Size = UDim2.fromOffset(self.Config.Width * 0.94, self.Config.Height * 0.94)
-	tween(self.Window, { GroupTransparency = 0 }, 0.22, Enum.EasingStyle.Quart)
+	tween(self.Fade, { BackgroundTransparency = 1 }, 0.22, Enum.EasingStyle.Quart)
 	tween(self.Holder, {
 		Size = UDim2.fromOffset(self.Config.Width, self.Config.Height),
 	}, 0.3, Enum.EasingStyle.Quart)
@@ -1612,7 +1626,7 @@ function Nova:Close()
 	self._visible = false
 	self:_UpdateFloatingLabel()
 	self:_ClosePopup()
-	tween(self.Window, { GroupTransparency = 1 }, 0.16)
+	if self.Fade then tween(self.Fade, { BackgroundTransparency = 0 }, 0.16) end
 	tween(self.Holder, {
 		Size = UDim2.fromOffset(self.Config.Width * 0.95, self.Config.Height * 0.95),
 	}, 0.18, Enum.EasingStyle.Quart)
