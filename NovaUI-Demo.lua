@@ -1145,12 +1145,14 @@ function Nova:_BuildWindow()
 	})
 
 	-- 内容区（位置固定写死，不再依赖标签条实测高度）
+	-- 位置/尺寸各预留 2px：卡片描边是向外溢出的，贴边会被 ScrollingFrame 裁掉，
+	-- 导致最左侧那张卡的左边框看起来“没描边”。补偿后视觉边距仍是 14。
 	self.Content = create("ScrollingFrame", {
 		Name = "Content",
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
-		Size = UDim2.new(1, -28, 1, -(CONTENT_Y + 14)),
-		Position = UDim2.fromOffset(14, CONTENT_Y),
+		Size = UDim2.new(1, -24, 1, -(CONTENT_Y + 10)),
+		Position = UDim2.fromOffset(12, CONTENT_Y - 2),
 		CanvasSize = UDim2.fromOffset(0, 0),
 		AutomaticCanvasSize = Enum.AutomaticSize.Y,
 		ScrollingDirection = Enum.ScrollingDirection.Y,
@@ -1161,6 +1163,7 @@ function Nova:_BuildWindow()
 		ZIndex = 12,
 		Parent = main,
 	})
+	padding(self.Content, 2, 2, 2, 2)
 end
 
 --==============================================================================
