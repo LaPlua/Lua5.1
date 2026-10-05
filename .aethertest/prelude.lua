@@ -96,7 +96,7 @@ function METHODS.WaitForChild(self, name) return METHODS.FindFirstChild(self, na
 function METHODS.IsA(self, cls) return true end
 function METHODS.Clone(self) return newInst(self.ClassName) end
 function METHODS.GetPropertyChangedSignal(self, p)
-	local st = self.__pcs
+	local st = rawget(self, "__pcs")
 	if not st then return signal() end
 	return signal()
 end
@@ -155,7 +155,18 @@ Vector2 = { new = function(x, y) return V2(x, y) end }
 Vector3 = { new = function(x, y, z) return { X = x or 0, Y = y or 0, Z = z or 0 } end }
 UDim = { new = function(s, o) return { Scale = s or 0, Offset = o or 0 } end }
 UDim2 = {
-	new = function(xs, xo, ys, yo) return { X = UDim.new(xs, xo), Y = UDim.new(ys, yo) } end,
+	new = function(xs, xo, ys, yo)
+		return setmetatable({ X = UDim.new(xs, xo), Y = UDim.new(ys, yo) }, {
+			__add = function(a, b)
+				return UDim2.new(a.X.Scale + b.X.Scale, a.X.Offset + b.X.Offset,
+					a.Y.Scale + b.Y.Scale, a.Y.Offset + b.Y.Offset)
+			end,
+			__sub = function(a, b)
+				return UDim2.new(a.X.Scale - b.X.Scale, a.X.Offset - b.X.Offset,
+					a.Y.Scale - b.Y.Scale, a.Y.Offset - b.Y.Offset)
+			end,
+		})
+	end,
 	fromOffset = function(x, y) return UDim2.new(0, x, 0, y) end,
 	fromScale = function(x, y) return UDim2.new(x, 0, y, 0) end,
 }
@@ -185,6 +196,7 @@ TweenInfo = { new = function(...) return { ... } end }
 Rect = { new = function(...) return {} end }
 
 local CAMERA = { ViewportSize = V2(1280, 720), FieldOfView = 70, CFrame = {} }
+function CAMERA:GetPropertyChangedSignal(p) return signal() end
 local LP = newInst("Player")
 LP.UserId = 1
 LP.Name = "Tester"

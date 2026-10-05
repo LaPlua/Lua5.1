@@ -1,4 +1,4 @@
-// 星穹独立示例验证：fengari + 严格 Roblox 模拟
+// 星穹独立示例验证：fengari(Lua 5.1) + 严格 Roblox 模拟
 const fs = require('fs');
 const path = require('path');
 const { lua, lauxlib, lualib, to_luastring, to_jsstring } = require('/tmp/luacheck/node_modules/fengari');
@@ -6,7 +6,7 @@ const { lua, lauxlib, lualib, to_luastring, to_jsstring } = require('/tmp/luache
 const L = lauxlib.luaL_newstate();
 lualib.luaL_openlibs(L);
 
-function runFile(file, setGlobal) {
+function runFile(file) {
   const code = fs.readFileSync(file, 'utf8');
   let st = lauxlib.luaL_loadbuffer(L, to_luastring(code), code.length, to_luastring(path.basename(file)));
   if (st !== lua.LUA_OK) {
@@ -22,7 +22,6 @@ function runFile(file, setGlobal) {
     console.log('RUNTIME_ERROR  ' + path.basename(file) + '\n' + to_jsstring(lua.lua_tostring(L, -1)));
     process.exit(3);
   }
-  if (setGlobal) lua.lua_setglobal(L, to_luastring(setGlobal));
   lua.lua_settop(L, 0);
 }
 
@@ -41,19 +40,16 @@ function readGlobalArray(name) {
   return out;
 }
 
-console.log('== 目标：Celest-Standalone.lua ==');
 runFile('/workspace/.aethertest/prelude.lua');
-console.log('  [1] 模拟环境加载 OK');
 runFile('/workspace/Celest-Standalone.lua');
-console.log('  [2] 星穹脚本执行 OK');
+console.log('  [1] 星穹脚本执行 OK');
 runFile('/workspace/.aethertest/celest_test.lua');
-
-readGlobalArray('__REPORT').forEach(s => console.log('  · ' + s));
+console.log('  [2] 交互验证完成');
+readGlobalArray('__REPORT').forEach(s => console.log('      ' + s));
 const errs = readGlobalArray('__ERR');
 if (errs.length > 0) {
-  console.log('  ✗ FAIL（' + errs.length + ' 处）：');
-  errs.slice(0, 30).forEach(s => console.log('      ' + s));
+  console.log('FAIL（' + errs.length + ' 处）：');
+  errs.slice(0, 40).forEach(s => console.log('      ' + s));
   process.exit(4);
 }
-console.log('  [3] 背景透明 + 数值星拖动 OK');
 console.log('PASS：Celest-Standalone.lua');

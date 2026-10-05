@@ -51,6 +51,14 @@ end
 
 local before = valueLabels()
 local nb = #before
+local beforeTxts = {}
+for i, d in ipairs(before) do beforeTxts[i] = d.Text end
+local function snapshot(t)
+	local s = {}
+	for i, d in ipairs(t) do s[i] = d.Text end
+	return table.concat(s, ",")
+end
+local beforeTxt = table.concat(beforeTxts, ",")
 try("drain2", function() __drain(2000) end)
 
 local btns = descendants("TextButton")
@@ -79,12 +87,15 @@ try("drain3", function() __drain(2000) end)
 -- 统计变化
 local changed, total = 0, 0
 local after = valueLabels()
-for i = 1, math.min(#before, #after) do
+for i = 1, math.min(#beforeTxts, #after) do
 	total = total + 1
-	if before[i].Text ~= after[i].Text then changed = changed + 1 end
+	if beforeTxts[i] ~= after[i].Text then changed = changed + 1 end
 end
 __REPORT = {
 	"数值百分比标签数=" .. tostring(nb),
+	"before=" .. beforeTxt,
+	"after=" .. snapshot(after),
+	"TextButton数=" .. tostring(#btns),
 	"拖动后发生变化的标签数=" .. tostring(changed) .. "/" .. tostring(total),
 }
 if nb == 0 then
