@@ -4182,12 +4182,17 @@ end
 
 
 --==============================================================================
---  AETHER UI · 示例 Example
---  最小可运行骨架：两页、三卡片、常用控件全覆盖。
---  用法：先执行 Aether.lua（库本体），再执行本文件。
+--  AETHER UI · 自包含示例 Example
+--  自带加载库本体：直接从 GitHub 加载本文件即可运行，无需先手动加载库。
+--  加载： loadstring(game:HttpGet("https://raw.githubusercontent.com/LaPlua/Lua5.1/main/Aether-Example.lua"))()
 --==============================================================================
+
+-- 0) 加载库本体（已加载过则直接复用）
 if not Aether then
-	error("[AETHER] 请先加载 Aether.lua 库本体，再运行本示例。")
+	Aether = loadstring(game:HttpGet("https://raw.githubusercontent.com/LaPlua/Lua5.1/main/Aether.lua"))()
+end
+if not Aether then
+	error("[AETHER] 库本体加载失败：请检查执行器是否支持 loadstring / game:HttpGet。")
 end
 
 -- 1) 创建实例 ---------------------------------------------------------------
