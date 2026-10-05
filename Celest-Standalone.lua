@@ -229,9 +229,9 @@ local veil = mk("Frame", {
 -- 内环 = 分类星点（侧边栏就在这里选）；外环 = 当前分类的功能星
 -- 每环最多 PER_RING 个功能，某类功能多则自动多开几环
 local PER_RING = 8
-local R_IN     = 178     -- 内环（分类选择）半径
-local R_FIRST  = 330     -- 第一道外环半径
-local STEP_R   = 138     -- 外环之间的间距
+local R_IN     = 172     -- 内环（分类选择）半径
+local R_FIRST  = 286     -- 第一道外环半径
+local STEP_R   = 106     -- 外环之间的间距
 local maxSegs  = 1
 for _, c in ipairs(DATA) do
 	maxSegs = math.max(maxSegs, math.ceil(#c.stars / PER_RING))
@@ -316,6 +316,7 @@ local buildOuter, paintCats
 local active = 1
 local HUDBus = { Refresh = function() end }
 local STARS, STAR_BY_NAME = {}, {}
+local brand   -- 品牌/提示层（仅开环时可见）
 
 ---------------------------------------------------------------- 星点视觉
 local function paintDot(dot, on, sel)
@@ -883,23 +884,27 @@ buildOuter(active)
 HUDBus.Refresh()
 gather()
 
----------------------------------------------------------------- 品牌 & 提示
+---------------------------------------------------------------- 品牌 & 提示（仅开环时可见）
+brand = mk("Frame", {
+	Parent = root, Size = UDim2.fromScale(1, 1),
+	BackgroundTransparency = 1, Visible = false, ZIndex = 20,
+})
 mk("TextLabel", {
-	Parent = root, BackgroundTransparency = 1,
+	Parent = brand, BackgroundTransparency = 1,
 	Size = UDim2.fromOffset(300, 30), Position = UDim2.new(0, 34, 0, 26),
 	Font = Enum.Font.GothamMedium, TextSize = 22,
 	TextColor3 = T.star, TextTransparency = .1,
 	Text = "星 穹", TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 20,
 })
 mk("TextLabel", {
-	Parent = root, BackgroundTransparency = 1,
+	Parent = brand, BackgroundTransparency = 1,
 	Size = UDim2.fromOffset(320, 16), Position = UDim2.new(0, 36, 0, 54),
 	Font = Enum.Font.Gotham, TextSize = 10,
 	TextColor3 = T.dim, TextTransparency = .58,
 	Text = "C E L E S T   ·   独立示例", TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 20,
 })
 mk("TextLabel", {
-	Parent = root, BackgroundTransparency = 1,
+	Parent = brand, BackgroundTransparency = 1,
 	Size = UDim2.fromOffset(520, 40), Position = UDim2.new(0, 30, 1, -58), AnchorPoint = Vector2.new(0, 1),
 	Font = Enum.Font.Gotham, TextSize = 11,
 	TextColor3 = T.dim, TextTransparency = .62,
