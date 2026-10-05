@@ -1,0 +1,6 @@
+== 目标：Aether-Example.lua ==
+  [1] 库加载 OK
+  [2] 目标脚本执行 OK
+  [3] 异步任务（开机自检）排空 OK
+  [4] 事件触发（悬停/点击/右键/拖拽/输入）OK
+PASS：Aether-Example.lua
