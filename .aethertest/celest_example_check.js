@@ -1,7 +1,10 @@
-// 运行 Celest-Example.lua：模拟 game:HttpGet 返回库源码，验证文档示例端到端可跑
+// 运行 Celest 示例：模拟 game:HttpGet 返回库源码，验证文档示例端到端可跑
+// 可用 CELEST_TARGET=/workspace/Celest-Demo.lua 指定其它示例
 const fs = require('fs');
 const path = require('path');
 const { lua, lauxlib, lualib, to_luastring, to_jsstring } = require('/tmp/luacheck/node_modules/fengari');
+
+const TARGET = process.env.CELEST_TARGET || '/workspace/Celest-Example.lua';
 
 const L = lauxlib.luaL_newstate();
 lualib.luaL_openlibs(L);
@@ -33,7 +36,7 @@ lauxlib.luaL_dostring(L, to_luastring(
 lua.lua_settop(L, 0);
 
 // 直接执行示例（内含 loadstring(game:HttpGet(...)) 建窗）
-runFile('/workspace/Celest-Example.lua', false);
+runFile(TARGET, false);
 
 lauxlib.luaL_dostring(L, to_luastring('__drain(6000)'));
 lua.lua_settop(L, 0);
@@ -48,10 +51,8 @@ if gui then
 		if d.Name == "CelestBrand" then brand = d end
 		if d.Name == "CelestMap" then
 			for _, e in ipairs(d:GetDescendants()) do
-				if e.ClassName == "TextButton" then
-					if e.Text == "✦" or e.Text == "◈" or e.Text == "❖" or e.Text == "⊙" then cats = cats + 1
-					elseif e.Text == "" and e.Parent and e.Parent.ClassName == "Frame" then stars = stars + 1 end
-				end
+				if e.Name == "CelestCategory" then cats = cats + 1
+				elseif e.Name == "CelestStar" then stars = stars + 1 end
 			end
 		end
 	end
@@ -59,7 +60,7 @@ end
 __REPORT = {
 	"示例建窗=" .. tostring(gui ~= nil),
 	"内环分类星点=" .. tostring(cats) .. "（应为 4）",
-	"当前分类功能星节点(含其它空按钮)=" .. tostring(stars),
+	"当前分类功能星节点=" .. tostring(stars),
 	"开环后品牌可见=" .. tostring(brand and brand.Visible),
 }
 `));
@@ -78,4 +79,4 @@ function readGlobalArray(name) {
 readGlobalArray('__REPORT').forEach(s => console.log('   ' + s));
 const errs = readGlobalArray('__ERR');
 if (errs.length) { console.log('FAIL：'); errs.forEach(s => console.log('   ' + s)); process.exit(4); }
-console.log('PASS：Celest-Example.lua 端到端');
+console.log('PASS：' + path.basename(TARGET) + ' 端到端');

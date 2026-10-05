@@ -22,13 +22,17 @@ local win = Celest.new({
 --==============================================================================
 -- 2. 分类（内环星点）
 --   win:Category(name, glyph)
---   glyph 是类别星点上显示的字符，省略为 "✦"
+--   glyph 是类别星点上显示的标记：
+--     · 传内置图标名（推荐）→ 用矢量图标绘制，不依赖字体，任何执行器都不会乱码
+--       （如 "sword" "eye" "run" "gear" "target" "shield" …，
+--        完整列表见教程，或运行时打印 Celest.IconNames）
+--     · 传任意字符（如 "✦"）→ 直接显示该字符
 --   点击类别星点 → 外环切换为该分类的功能星
 --==============================================================================
-local combat = win:Category("兵戈", "✦")
-local visual = win:Category("观照", "◈")
-local move   = win:Category("行止", "❖")
-local system = win:Category("律令", "⊙")
+local combat = win:Category("兵戈", "sword")
+local visual = win:Category("观照", "eye")
+local move   = win:Category("行止", "run")
+local system = win:Category("律令", "gear")
 
 --==============================================================================
 -- 3. 控件：Toggle（开关）
@@ -70,7 +74,21 @@ combat:Button("锁定最近目标", function()
 end)
 
 --==============================================================================
--- 6. 其它分类：功能数超过 8 个时，外环会自动多开一环
+-- 6. 控件：Dropdown（下拉框）
+--   Dropdown(name, options, default, cb) · cb(v) 在选择某一项时触发
+--   options 为字符串数组；default 省略时取第一项
+--   操作：点该下拉星展开列表，再点其中一项选中
+--   返回 item，可用 d.value 读当前选项
+--==============================================================================
+local mode = combat:Dropdown("作战模式", { "平衡", "激进", "潜行" }, "平衡", function(v)
+	print("[兵戈] 作战模式 ->", v)
+end)
+combat:Dropdown("瞄准部位", { "头部", "胸部", "最近" }, nil, function(v)
+	print("[兵戈] 瞄准部位 ->", v)
+end)
+
+--==============================================================================
+-- 7. 其它分类：功能数超过 8 个时，外环会自动多开一环
 --   下面「观照」共 10 个 → 自动分 2 环
 --==============================================================================
 visual:Toggle("描边高亮", true,  function(on) print("[观照] 描边高亮 ->", on) end)
@@ -85,7 +103,7 @@ visual:Toggle("命中音效", false, function(on) print("[观照] 命中音效 -
 visual:Button("清空全部标记", function() print("[观照] 清空全部标记") end)
 
 --==============================================================================
--- 7. 其它分类：普通写法
+-- 8. 其它分类：普通写法
 --==============================================================================
 move:Toggle("疾行",   false, function(on) print("[行止] 疾行 ->", on) end)
 move:Toggle("二段跃", false, function(on) print("[行止] 二段跃 ->", on) end)
@@ -96,7 +114,7 @@ system:Toggle("低语面板", true, function(on) print("[律令] 低语面板 ->
 system:Slider("星痕上限", 1, 10, 6, function(v) print("[律令] 星痕上限 ->", v) end)
 
 --==============================================================================
--- 8. 运行时 API
+-- 9. 运行时 API
 --   win:Open()          展开星图
 --   win:Close()         收合星图（右下角常驻星点仍在）
 --   win:Select(name)    按分类名切换
@@ -108,12 +126,12 @@ system:Button("切到「观照」", function() win:Select("观照") end)
 system:Button("关闭星图",     function() win:Close() end)
 
 --==============================================================================
--- 9. 默认展开一次（Celest 无 StartOpen，需要就手动调用）
---   电脑也可按住 ALT 呼出；手机点右下角常驻星点
+-- 10. 默认展开一次（Celest 无 StartOpen，需要就手动调用）
+--    电脑按 ALT 呼出 / 再按归寂；手机点右下角常驻星点
 --==============================================================================
-print("Celest", Celest.Version, "已加载：按住 ALT 呼出 · CTRL+K 低语 · 手机点右下星点")
+print("Celest", Celest.Version, "已加载：按 ALT 呼出/再按归寂 · CTRL+K 低语 · 手机点右下星点")
 
 win:Open()
 
 -- 只读示例：想取值随时读 item.value
---   print(aim.value, damp.value)
+--   print(aim.value, damp.value, mode.value)

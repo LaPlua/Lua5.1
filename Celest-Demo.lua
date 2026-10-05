@@ -3,7 +3,7 @@
 	-----------------------------------------------------------------
 	演示如何用库搭一套「无窗体星图」界面：
 	内环星点选分类，外环出功能；某类功能多会自动多开几环。
-	电脑：按住 ALT 呼出；手机：点右下角星点。
+	电脑：按 ALT 呼出 / 再按归寂；手机：点右下角星点。
 --]]
 
 local Celest = loadstring(game:HttpGet(
@@ -15,16 +15,18 @@ local win = Celest.new({
 })
 
 ---------------------------------------------------------------- 兵戈
-local combat = win:Category("兵戈", "✦")
+local combat = win:Category("兵戈", "sword")   -- glyph 传内置图标名
 combat:Toggle("自动瞄准", false, function(on) end)
 combat:Toggle("穿墙视野", true,  function(on) end)
 combat:Toggle("无后坐力", false, function(on) end)
 combat:Toggle("弹道预判", true,  function(on) end)
 combat:Slider("平滑阻尼", 0, 100, 35, function(v) end)
 combat:Slider("视野半径", 0, 100, 62, function(v) end)
+combat:Dropdown("作战模式", { "平衡", "激进", "潜行" }, "平衡", function(v) end)
+combat:Button("锁定最近目标", function() end)
 
 ---------------------------------------------------------------- 观照
-local visual = win:Category("观照", "◈")
+local visual = win:Category("观照", "eye")
 visual:Toggle("描边高亮", true,  function(on) end)
 visual:Toggle("骨架绘制", false, function(on) end)
 visual:Toggle("方框标记", false, function(on) end)
@@ -33,7 +35,7 @@ visual:Slider("描边浓度", 0, 100, 48, function(v) end)
 visual:Slider("绘制层数", 1, 8, 3, function(v) end)
 
 ---------------------------------------------------------------- 行止
-local move = win:Category("行止", "❖")
+local move = win:Category("行止", "run")
 move:Toggle("疾行",   false, function(on) end)
 move:Toggle("二段跃", false, function(on) end)
 move:Toggle("凌波",   false, function(on) end)
@@ -42,7 +44,7 @@ move:Slider("速度倍率", 1, 20, 4, function(v) end)
 move:Slider("滞空时间", 0, 100, 20, function(v) end)
 
 ---------------------------------------------------------------- 律令
-local sys = win:Category("律令", "⊙")
+local sys = win:Category("律令", "gear")
 sys:Toggle("低语面板", true, function(on) end)
 sys:Slider("星痕上限", 1, 10, 6, function(v) end)
 sys:Button("展开低语搜索", function() win:Search() end)

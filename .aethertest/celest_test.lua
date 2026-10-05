@@ -22,10 +22,10 @@ end
 -- [1] 背景必须透明
 local gui = nil
 for _, d in ipairs(CoreGui:GetChildren()) do
-	if d.Name == "CelestStandalone" then gui = d end
+	if d.Name == "CelestUI" then gui = d end
 end
 if not gui then
-	__ERR[#__ERR + 1] = "未找到 CelestStandalone ScreenGui"
+	__ERR[#__ERR + 1] = "未找到 CelestUI ScreenGui"
 else
 	local root = nil
 	for _, c in ipairs(gui:GetChildren()) do
@@ -42,7 +42,7 @@ end
 local function valueLabels()
 	local t = {}
 	for _, d in ipairs(CoreGui:GetDescendants()) do
-		if d.ClassName == "TextLabel" and type(d.Text) == "string" and d.Text:match("^%d+%%$") then
+		if d.ClassName == "TextLabel" and type(d.Text) == "string" and d.Text:match("^%d+$") then
 			t[#t + 1] = d
 		end
 	end
@@ -96,14 +96,14 @@ for i = 1, math.min(#beforeTxts, #after) do
 	if beforeTxts[i] ~= after[i].Text then changed = changed + 1 end
 end
 __REPORT = {
-	"数值百分比标签数=" .. tostring(nb),
+	"数值标签数=" .. tostring(nb),
 	"before=" .. beforeTxt,
 	"after=" .. snapshot(after),
 	"TextButton数=" .. tostring(#btns),
 	"拖动后发生变化的标签数=" .. tostring(changed) .. "/" .. tostring(total),
 }
 if nb == 0 then
-	__ERR[#__ERR + 1] = "没有找到任何数值星百分比标签"
+	__ERR[#__ERR + 1] = "没有找到任何数值星数值标签"
 elseif changed == 0 then
 	__ERR[#__ERR + 1] = "拖动后数值未发生变化（拖动逻辑仍然失效）"
 end

@@ -1,6 +1,7 @@
 # 星穹 Celest 使用教程
 
-> 版本 1.0.0 · 兼容 Lua 5.1 / Roblox Luau · 深空冷紫 · 无窗体星图 · 电脑 + 手机通用
+> 版本 1.1.0 · 兼容 Lua 5.1 / Roblox Luau · 深空冷紫 · 无窗体星图 · 电脑 + 手机通用
+> 本版要点：开关状态稳定（点空白不再丢失）、内置纯矢量图标库、新增下拉框 / 按钮、低语搜索支持键盘操作
 
 ---
 
@@ -26,8 +27,8 @@
 | --- | --- |
 | `Celest.lua` | 纯 UI 库本体，末尾 `return Celest`，供其他脚本加载 |
 | `Celest-Example.lua` | 完整注释示例，从远程加载库本体（推荐照着改） |
-| `Celest-Demo.lua` | 库 + 演示界面，直接运行即可看到效果 |
-| `Celest-Standalone.lua` | 不依赖任何库的独立单文件示例 |
+| `Celest-Demo.lua` | 从远程加载库 + 演示界面，运行即可看到效果 |
+| `Celest-Standalone.lua` | 独立单文件版：已把库本体内联，**粘进执行器即可运行，无需联网**（与 `Celest.lua` 同源；改了库记得重新生成它） |
 
 **方式 A：远程加载库（推荐）**
 
@@ -57,13 +58,14 @@ local win = Celest.new({
 	subtitle = "C E L E S T",
 })
 
-local combat = win:Category("兵戈", "✦")
+local combat = win:Category("兵戈", "sword")   -- glyph 用内置图标名，见第 5 节
 combat:Toggle("自动瞄准", false, function(on) print("自动瞄准", on) end)
 combat:Slider("视野半径", 0, 100, 50, function(v) print("半径", v) end)
+combat:Dropdown("作战模式", { "平衡", "激进" }, "平衡", function(v) print("模式", v) end)
 combat:Button("执行一次", function() print("bang") end)
 ```
 
-运行后：电脑按住 `ALT` 呼出星图，手机点右下角常驻星点呼出。
+运行后：电脑按 `ALT` 呼出星图（再按归寂），手机点右下角常驻星点呼出。
 
 ---
 
@@ -71,14 +73,19 @@ combat:Button("执行一次", function() print("bang") end)
 
 | 操作 | 电脑 | 手机 |
 | --- | --- | --- |
-| 呼出星图 | 按住 `ALT`（松手归寂）；点右下角星点可钉住常亮 | 点右下角常驻星点（再点归寂） |
+| 呼出星图 | 按 `ALT` 切换（按一次展开，再按归寂）；点右下角星点也可钉住常亮 | 点右下角常驻星点（再点归寂） |
 | 切换分类 | 点内环的类别星点 | 同左 |
 | 开关功能 | 点功能星 | 同左 |
 | 调数值 | **先单击选中数值星，再按住左右拖动** | 选中后按住左右拖 |
-| 搜索 | `CTRL` + `K`（低语面板），或点左上「⌕ 低语」 | 点左上「⌕ 低语」 |
-| 关闭搜索 | `ESC` | 点结果外区域 |
+| 下拉选择 | 点下拉星展开列表 → 点其中一项 | 同左 |
+| 一次执行 | 点带箭头的按钮星（点一下执行一次） | 同左 |
+| 搜索 | `CTRL` + `K` 打开「低语」；或点左上「低语」按钮 | 点左上「低语」按钮 |
+| 搜索面板内 | `↑` `↓`（或 `W` `S`）选择 · `Enter` 执行 · `ESC` 关闭 | 直接点结果 |
+| 取消选中 / 收起下拉 | 点空白处；**不会关闭星图，也不会改变开关状态** | 点空白处 |
 
 右上角的「星痕」会实时显示当前所有亮起的开关名，鼠标悬停可展开完整列表。
+
+> 关于开关：开关状态保存在该功能自己的 `item.value` 里，只有点这颗功能星才会改变它；点空白只做「取消选中」和「收起下拉」，因此不会再出现「一不小心把开关关掉」的情况。
 
 ---
 
@@ -113,14 +120,30 @@ local win = Celest.new({
 | 参数 | 类型 | 说明 |
 | --- | --- | --- |
 | `name` | string | 分类名（显示在内环类别星点下方） |
-| `glyph` | string | 类别星点上显示的字符，默认 `"✦"` |
+| `glyph` | string | 类别星点上的标记：传**内置图标名**则用矢量图标绘制；传其它字符则直接显示该字符。默认 `"✦"` |
 
 ```lua
-local combat = win:Category("兵戈", "✦")
-local visual = win:Category("观照", "◈")
-local move   = win:Category("行止", "❖")
-local system = win:Category("律令", "⊙")
+-- 推荐：用内置矢量图标（不依赖字体，任何执行器都不会出现方框 / 乱码）
+local combat = win:Category("兵戈", "sword")
+local visual = win:Category("观照", "eye")
+local move   = win:Category("行止", "run")
+local system = win:Category("律令", "gear")
+
+-- 也可用任意字符
+local misc = win:Category("杂项", "✦")
 ```
+
+**内置图标名一览**（运行时可用 `Celest.IconNames` 打印完整列表，`Celest.Icons` 取绘制函数）：
+
+```text
+dot      sword    shield   eye      target   crosshair  bolt
+gear     layers   search   star     run      wave       list
+check    lock     power    plus     box      flag       home
+info     warn     sound    code     text     radar
+```
+
+图标全部由 `Frame` + `UIStroke` 现场绘制，不使用任何字体或图片资源。
+其它控件也会自动引用图标：按钮星用 `run`、下拉星用箭头、搜索面板按类型显示 `dot` / `wave` / `list` / `run`。
 
 - 一个分类对应**内环上的一个星点**；
 - 点击类别星点即切换到该分类，外环随之换成它的功能星；
@@ -181,6 +204,24 @@ end)
 
 **返回的 item**：`{ kind = "button", name, cb }`。
 
+### 6.4 Dropdown 下拉框
+
+```lua
+local d = combat:Dropdown("作战模式", { "平衡", "激进", "潜行" }, "平衡", function(v)
+	print("作战模式 ->", v)
+end)
+```
+
+| 参数 | 类型 | 说明 |
+| --- | --- | --- |
+| `name` | string | 功能名 |
+| `options` | table | 字符串数组，所有可选项 |
+| `default` | string | 初始选中项；省略取 `options[1]` |
+| `cb` | function | `cb(v)`，选中某一项时触发，`v` 为该项 |
+
+**返回的 item**：`{ kind = "dropdown", name, options, value, cb }`，可用 `d.value` 读当前选项。
+操作：点该下拉星展开列表（列表会靠近星点弹出并自动避让屏幕边缘），再点其中一项选中；选中项左侧有高亮标记。点空白处即可收起列表。
+
 ---
 
 ## 7. 星图布局与环
@@ -213,11 +254,25 @@ end)
 
 ```lua
 -- 常用组合
-print(Celest.Version)                -- 版本号，如 "1.0.0"
+print(Celest.Version)                -- 版本号，如 "1.1.0"
+print(Celest.IconNames)              -- 全部内置图标名（数组，可遍历）
 win:Select("观照")                    -- 切到「观照」分类
 win:Search("描边")                    -- 打开搜索并预填「描边」
 task.delay(3, function() win:Close() end)
 ```
+
+### 8.1 低语搜索面板
+
+打开方式：`CTRL` + `K`，或点左上角「低语」按钮；也可 `win:Search(prefill)` 预填关键字。
+
+- **搜索范围**：全部分类的所有功能名 + 分类名，输入即时过滤；
+- **结果列表**：可滚动。每行左侧是该功能的类型图标，中间是功能名，右侧显示「所属分类 · 当前状态」（如「已亮 / 已灭」「62 / 100」「平衡」「点击执行」）；
+- **键盘操作**：`↑` `↓`（或 `W` `S`）移动高亮，`Enter` 执行，`ESC` 关闭；也可以直接用鼠标点某一行；
+- **执行行为**：
+  - 开关 → 就地切换，面板保持打开且状态实时刷新；
+  - 按钮 → 立即执行一次；
+  - 下拉 → 关闭面板并展开该下拉星；
+  - 数值 → 关闭面板并选中该数值星，随后可拖动调值。
 
 ---
 
@@ -253,7 +308,7 @@ local win = Celest.new({
 
 见同目录 [`Celest-Example.lua`](Celest-Example.lua)，涵盖：
 
-- 远程加载库 → 建窗 → 四个分类 → Toggle / Slider / Button；
+- 远程加载库 → 建窗 → 四个分类（用矢量图标作类别标记）→ Toggle / Slider / Button / Dropdown；
 - 每类功能超过 8 个时自动多开环的写法；
 - 运行时 `Select` / `Search` / `Close` 的调用。
 
@@ -282,6 +337,24 @@ win:Open()
 
 **Q：分类太多挤在一起？**
 内环按分类数量均分 360°，建议控制在 3 ~ 6 个；过多可拆成多层或改用搜索（`CTRL + K`）。
+
+**Q：开关点开之后，点别的地方会不会被关掉？**
+不会。开关状态只由点这颗功能星改变；点空白处仅取消选中 / 收起下拉，星图也不会因此关闭。`ALT` 也改成了切换式（按一次开、再按关），不会因为松手就归寂。
+
+**Q：图标显示成方框或乱码？**
+把 `Category` 的 `glyph` 换成**内置图标名**（如 `"sword"`、`"eye"`、`"gear"`）即可，图标全部由 `Frame` + `UIStroke` 绘制，不依赖系统字体，任何执行器与分辨率都清晰。可用 `Celest.IconNames` 查看全部名称。
+
+**Q：怎么加下拉框和「点一次就执行」的按钮？**
+
+```lua
+cat:Dropdown("作战模式", { "平衡", "激进", "潜行" }, "平衡", function(v) print(v) end)
+cat:Button("执行一次", function() print("bang") end)
+```
+
+下拉星点开列表选择；按钮星点一下执行一次。也可以在「低语」搜索里直接搜到并执行。
+
+**Q：低语搜索好用吗？支持键盘吗？**
+支持。`CTRL + K` 打开后，`↑` `↓` 选择、`Enter` 执行、`ESC` 关闭；结果可滚动，并显示每项的类型与当前状态。详见 [8.1 低语搜索面板](#81-低语搜索面板)。
 
 **Q：想彻底移除 UI？**
 
