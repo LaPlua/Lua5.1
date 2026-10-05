@@ -1,10 +1,10 @@
 --[[
     星 穹 · C E L E S T   —— 独立示例（不依赖任何 UI 库）
     ---------------------------------------------------------------
-    深空冷紫 / 无窗体 / 多环星图（一圈一类，全部同时可见）/ 电脑 + 手机
+    深空冷紫 / 无窗体 / 内环选分类 · 外环出功能（功能多自动多开环）/ 电脑 + 手机
     · 电脑：按住 ALT 呼出星图，松手归寂
     · 手机：点右下角常驻星点呼出，再点归寂
-    · 点功能星 = 亮/灭；选中数值星后拖动 = 调值
+    · 内环星点 = 选分类；点功能星 = 亮/灭；选中数值星后拖动 = 调值
     · CTRL + K = 低语（搜索全部功能）
     直接粘进执行器运行，无任何外部依赖。
 --]]
@@ -163,7 +163,7 @@ local root = mk("Frame", {
 })
 
 ---------------------------------------------------------------- 星云
-local neb = mk("Frame", { Parent = root, Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, ZIndex = 1 })
+local neb = mk("Frame", { Parent = root, Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Visible = false, ZIndex = 1 })
 local b1, b2, b3 = blob(neb, 900, T.nebA, .93), blob(neb, 780, T.nebB, .94), blob(neb, 840, T.nebC, .945)
 b1.Position = UDim2.fromScale(.28, .30)
 b2.Position = UDim2.fromScale(.76, .38)
@@ -182,7 +182,7 @@ drift(b2, -.06, .04, 60)
 drift(b3, -.04, -.05, 70)
 
 ---------------------------------------------------------------- 星场
-local field = mk("Frame", { Parent = root, Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, ZIndex = 2 })
+local field = mk("Frame", { Parent = root, Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Visible = false, ZIndex = 2 })
 do
 	local count = TOUCH and 70 or 140
 	for _ = 1, count do
@@ -214,7 +214,8 @@ end
 ---------------------------------------------------------------- 空白承接层
 local blank = mk("TextButton", {
 	Parent = root, Size = UDim2.fromScale(1, 1),
-	BackgroundTransparency = 1, Text = "", AutoButtonColor = false, ZIndex = 3,
+	BackgroundTransparency = 1, Text = "", AutoButtonColor = false,
+	Visible = false, ZIndex = 3,
 })
 
 ---------------------------------------------------------------- 星环开启时的幕布（关闭即隐去）
@@ -224,38 +225,31 @@ local veil = mk("Frame", {
 	BorderSizePixel = 0, ZIndex = 9,
 })
 
----------------------------------------------------------------- 星图容器（一圈一类；功能多则自动多开几环）
--- 每环最多容纳 PER_RING 个功能，某类功能超出就自动顺延到下一环
+---------------------------------------------------------------- 星图容器
+-- 内环 = 分类星点（侧边栏就在这里选）；外环 = 当前分类的功能星
+-- 每环最多 PER_RING 个功能，某类功能多则自动多开几环
 local PER_RING = 8
-local SEG = {}
-for ci, cat in ipairs(DATA) do
-	local n     = #cat.stars
-	local parts = math.max(1, math.ceil(n / PER_RING))
-	for p = 1, parts do
-		local seg = {}
-		for k = (p - 1) * PER_RING + 1, math.min(p * PER_RING, n) do
-			seg[#seg + 1] = cat.stars[k]
-		end
-		SEG[#SEG + 1] = { ci = ci, part = p, parts = parts, seg = seg }
-	end
+local R_IN     = 178     -- 内环（分类选择）半径
+local R_FIRST  = 330     -- 第一道外环半径
+local STEP_R   = 138     -- 外环之间的间距
+local maxSegs  = 1
+for _, c in ipairs(DATA) do
+	maxSegs = math.max(maxSegs, math.ceil(#c.stars / PER_RING))
 end
-local R0, STEP_R = 210, 118
-local R = {}
-for i = 1, #SEG do R[i] = R0 + (i - 1) * STEP_R end
-local R_OUT = R[#R]
-local REF = math.ceil((R_OUT + 90) * 2 / 10) * 10
+local R_OUT = R_FIRST + (maxSegs - 1) * STEP_R
+local REF   = math.ceil((R_OUT + 85) * 2 / 10) * 10
 
-local map = mk("CanvasGroup", {
+local map = mk("Frame", {
 	Parent = root,
 	Size = UDim2.fromOffset(REF, REF),
 	Position = UDim2.fromScale(.5, .5),
 	AnchorPoint = Vector2.new(.5, .5),
 	BackgroundTransparency = 1,
-	GroupTransparency = 1,
 	Visible = false,
 	ZIndex = 10,
 })
 local mapScale = mk("UIScale", { Parent = map, Scale = 1 })
+local baseScale = 1
 
 local function placeOn(node, r, deg)
 	local a = math.rad(deg)
@@ -266,10 +260,8 @@ end
 ---------------------------------------------------------------- 环 / 刻度 / 星核
 local ringLayer = mk("Frame", { Parent = map, Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, ZIndex = 1 })
 do
-	for i = 1, #R do
-		local rg = ring(R[i] * 2, T.line, i == #R and .88 or .93)
-		rg.Parent = ringLayer
-	end
+	local rg = ring(R_IN * 2, T.line, .90)
+	rg.Parent = ringLayer
 	local ticks = mk("Frame", { Parent = ringLayer, Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1 })
 	for i = 0, 71 do
 		local deg  = i / 72 * 360
@@ -313,12 +305,15 @@ task.spawn(function()
 	end
 end)
 
--- 分类名与星点同层，星点 ZIndex 更高
-local nodeLayer = mk("Frame", { Parent = map, Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, ZIndex = 5 })
+-- 外环层（随所选分类整体重建）与分类层（内环星点，固定不动）
+local outerLayer = mk("Frame", { Parent = map, Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, ZIndex = 4 })
+local catLayer   = mk("Frame", { Parent = map, Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, ZIndex = 7 })
 
 ---------------------------------------------------------------- 前向声明（必须在使用者之前）
 local SelectValue
 local OpenWhisper
+local buildOuter, paintCats
+local active = 1
 local HUDBus = { Refresh = function() end }
 local STARS, STAR_BY_NAME = {}, {}
 
@@ -395,9 +390,9 @@ local function beginDrag(node, star, dot, setV, noToggle)
 end
 
 ---------------------------------------------------------------- 功能星
-local function makeStar(cat, star, r, deg)
+local function makeStar(cat, ci, star, r, deg, parent)
 	local node = mk("Frame", {
-		Parent = nodeLayer,
+		Parent = parent,
 		Size = UDim2.fromOffset(114, 88),
 		BackgroundTransparency = 1,
 		ZIndex = 6,
@@ -483,44 +478,98 @@ local function makeStar(cat, star, r, deg)
 		HUDBus.Refresh()
 	end)
 
-	local entry = { star = star, node = node, dot = dot, setV = setV, cat = cat }
+	local entry = { star = star, node = node, dot = dot, setV = setV, cat = cat, ci = ci }
 	STARS[#STARS + 1] = entry
 	STAR_BY_NAME[star.n] = entry
 	return node
 end
 
----------------------------------------------------------------- 分类名（各环正上方；跨环时标注 ·2 ·3）
-local function buildLabels()
-	for i, s in ipairs(SEG) do
-		local cat = DATA[s.ci]
-		local txt = cat.glyph .. "  " .. cat.name
-		if s.parts > 1 then txt = txt .. " · " .. s.part end
-		local pill = mk("Frame", {
-			Parent = nodeLayer, Size = UDim2.fromOffset(108, 22),
-			BackgroundColor3 = T.panel, BackgroundTransparency = .38,
-			BorderSizePixel = 0, ZIndex = 5,
+---------------------------------------------------------------- 内环 · 分类星点（侧边栏就在这里点选）
+local catNodes = {}
+
+function paintCats()
+	for i, c in ipairs(catNodes) do
+		local on = (i == active)
+		tw(c.btn, .24, {
+			TextColor3 = on and T.star or T.dim,
+			TextTransparency = on and 0 or .42,
+			BackgroundTransparency = on and .12 or .55,
 		})
-		round(pill, 1)
-		stroke(pill, T.line, 1, .7)
-		placeOn(pill, R[i], -90)
-		mk("TextLabel", {
-			Parent = pill, BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1),
-			Font = Enum.Font.Gotham, TextSize = 12,
-			TextColor3 = T.star, TextTransparency = .12,
-			Text = txt, ZIndex = 6,
-		})
+		tw(c.st, .24, { Transparency = on and .22 or .72 })
+		tw(c.name, .24, { TextTransparency = on and .04 or .9 })
+		tw(c.dot, .24, { Size = UDim2.fromOffset(on and 10 or 6, on and 10 or 6) })
 	end
 end
 
----------------------------------------------------------------- 全部功能星（所有环同时显示）
-local function buildStars()
-	for i, s in ipairs(SEG) do
-		local cat  = DATA[s.ci]
-		local n    = #s.seg
-		local step = 360 / n
-		for j, st in ipairs(s.seg) do
-			-- 顶部留出分类名位置 → 从半格偏移开始排
-			makeStar(cat, st, R[i], -90 + step / 2 + (j - 1) * step)
+local function buildCats()
+	for i, cat in ipairs(DATA) do
+		local node = mk("Frame", {
+			Parent = catLayer, Size = UDim2.fromOffset(56, 56),
+			BackgroundTransparency = 1, ZIndex = 7,
+		})
+		placeOn(node, R_IN, -90 + (i - 1) * (360 / #DATA))
+
+		local btn = mk("TextButton", {
+			Parent = node, Size = UDim2.fromScale(1, 1),
+			BackgroundColor3 = T.panel, BackgroundTransparency = .5,
+			Text = cat.glyph, Font = Enum.Font.Gotham, TextSize = 16,
+			TextColor3 = T.dim, TextTransparency = .42,
+			AutoButtonColor = false, ZIndex = 7,
+		})
+		round(btn, 1)
+		local st  = stroke(btn, T.line, 1, .72)
+		local dot = circle(node, 6, T.accent or T.star, 1)
+		dot.Position = UDim2.new(.5, 0, 1, -2)
+		dot.ZIndex = 8
+		local name = mk("TextLabel", {
+			Parent = node, BackgroundTransparency = 1,
+			Size = UDim2.fromOffset(130, 16), Position = UDim2.new(.5, 0, 0, -18),
+			AnchorPoint = Vector2.new(.5, 1),
+			Font = Enum.Font.Gotham, TextSize = 13,
+			TextColor3 = T.dim, TextTransparency = .9, Text = cat.name, ZIndex = 8,
+		})
+
+		btn.MouseEnter:Connect(function() tw(name, .2, { TextTransparency = .18 }) end)
+		btn.MouseLeave:Connect(function()
+			if active ~= i then tw(name, .2, { TextTransparency = .9 }) end
+		end)
+		btn.MouseButton1Click:Connect(function()
+			if active == i then return end
+			active = i
+			clearSelection()
+			paintCats()
+			buildOuter(i)
+		end)
+
+		catNodes[i] = { btn = btn, st = st, name = name, dot = dot }
+	end
+	paintCats()
+end
+
+---------------------------------------------------------------- 外环 · 当前分类的功能星（功能多则多开几环）
+function buildOuter(ci)
+	for _, ch in ipairs(outerLayer:GetChildren()) do
+		if ch:IsA("GuiObject") then ch:Destroy() end
+	end
+	STARS, STAR_BY_NAME = {}, {}
+
+	local cat  = DATA[ci]
+	local n    = #cat.stars
+	local segs = math.max(1, math.ceil(n / PER_RING))
+
+	for s = 1, segs do
+		local r = R_FIRST + (s - 1) * STEP_R
+		local rg = ring(r * 2, T.line, .90)
+		rg.Parent = outerLayer
+
+		local seg = {}
+		for k = (s - 1) * PER_RING + 1, math.min(s * PER_RING, n) do
+			seg[#seg + 1] = cat.stars[k]
+		end
+		local m    = #seg
+		local step = 360 / m
+		for j, st in ipairs(seg) do
+			makeStar(cat, ci, st, r, -90 + step / 2 + (j - 1) * step, outerLayer)
 		end
 	end
 end
@@ -617,9 +666,13 @@ local mapOpen, pinned = false, false
 local function OpenMap()
 	if mapOpen then return end
 	mapOpen = true
+	blank.Visible = true
+	field.Visible = true
+	neb.Visible = true
 	map.Visible = true
+	mapScale.Scale = baseScale * .9
+	tw(mapScale, .38, { Scale = baseScale })
 	tw(veil, .42, { BackgroundTransparency = .18 })
-	tw(map, .42, { GroupTransparency = 0 })
 end
 
 local function CloseMap()
@@ -628,14 +681,15 @@ local function CloseMap()
 	endDrag()
 	clearSelection()
 	tw(veil, .34, { BackgroundTransparency = 1 })
-	local a = tw(map, .34, { GroupTransparency = 1 })
-	if a then
-		a.Completed:Connect(function()
-			if not mapOpen then map.Visible = false end
-		end)
-	else
+	local function hide()
+		if mapOpen then return end
 		map.Visible = false
+		blank.Visible = false   -- 关键：关环后不再全屏拦截点击
+		field.Visible = false   -- 浮游光点也一并隐去
+		neb.Visible = false
 	end
+	local a = tw(mapScale, .32, { Scale = baseScale * .9 })
+	if a then a.Completed:Connect(hide) else hide() end
 end
 
 sigil.MouseButton1Click:Connect(function()
@@ -720,6 +774,13 @@ local function renderRes()
 		b.MouseLeave:Connect(function() tw(b, .15, { TextColor3 = T.dim, TextTransparency = .35 }) end)
 		b.MouseButton1Click:Connect(function()
 			local e = STAR_BY_NAME[r.s.n]
+			if not e and r.ci ~= active then
+				-- 结果不在当前分类 → 先切到那一类，再执行
+				active = r.ci
+				paintCats()
+				buildOuter(active)
+				e = STAR_BY_NAME[r.s.n]
+			end
 			if e then
 				if e.star.t == "toggle" then
 					e.star.on = not e.star.on
@@ -779,7 +840,8 @@ local function resize()
 	local vp = Vector2.new(1280, 720)
 	local cam = workspace.CurrentCamera
 	if cam then vp = cam.ViewportSize end
-	mapScale.Scale = math.clamp(math.min(vp.X, vp.Y) / REF * (TOUCH and 1.06 or 1.02), .3, 1.15)
+	baseScale = math.clamp(math.min(vp.X, vp.Y) / REF * (TOUCH and 1.06 or 1.02), .3, 1.15)
+	mapScale.Scale = baseScale
 end
 resize()
 if workspace.CurrentCamera then
@@ -798,7 +860,7 @@ local function gather()
 	for _ = 1, 56 do
 		local d = circle(box, 4, T.star, 1)
 		local ang = math.random() * math.pi * 2
-		local r   = 240 + math.random() * 380
+		local r   = 180 + math.random() * (REF / 2 - 200)
 		d.Position = UDim2.new(.5, math.cos(ang) * r, .5, math.sin(ang) * r)
 		task.spawn(function()
 			tw(d, .12, { BackgroundTransparency = 0 })
@@ -816,8 +878,8 @@ local function gather()
 end
 
 ---------------------------------------------------------------- 启动
-buildLabels()
-buildStars()
+buildCats()
+buildOuter(active)
 HUDBus.Refresh()
 gather()
 
