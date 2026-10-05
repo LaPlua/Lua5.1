@@ -1318,7 +1318,7 @@ function Celest.new(cfg)
 	return win
 end
 
-Celest.Version = "1.1.0"
+Celest.Version = "1.2.0"
 Celest.Icons   = ICONS          -- 内置矢量图标表：name -> 绘制函数
 do
 	local names = {}
