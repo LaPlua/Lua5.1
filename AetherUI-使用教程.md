@@ -46,10 +46,14 @@ AETHER 不是「换个皮的开关集合」，它内置了一整套**系统的�
 **第一步：加载库本体**
 
 ```lua
--- 方式一：执行器里直接 loadstring
-local Aether = loadstring(game:HttpGet("你的 Aether.lua 原始链接"))()
+-- 方式一（推荐）：一行加载「库 + 示例」合并版，直接可跑
+loadstring(game:HttpGet("https://raw.githubusercontent.com/LaPlua/Lua5.1/main/Aether-All.lua"))()
 
--- 方式二：把 Aether.lua 源码粘贴执行后，直接使用全局 Aether
+-- 方式二：只要库本体（拿到返回的库表）
+local Aether = loadstring(game:HttpGet("https://raw.githubusercontent.com/LaPlua/Lua5.1/main/Aether.lua"))()
+
+-- 方式三：把 Aether.lua 源码整段粘贴执行后，库会自动导出全局 Aether，
+--         随后可再单独粘贴 Aether-Example.lua / Aether-Demo.lua 运行
 ```
 
 **第二步：创建实例并搭界面**
