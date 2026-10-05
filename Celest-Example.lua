@@ -6,6 +6,11 @@ local Celest = loadstring(game:HttpGet(
 	"https://raw.githubusercontent.com/LaPlua/Lua5.1/main/Celest.lua?v=" .. os.time()
 ))()
 
+-- 版本守卫：若拿到的是旧缓存，直接在控制台报警，避免「改了没生效」的错觉
+if Celest.Version ~= "1.2.0" then
+	warn("[Celest] 实际加载到 " .. tostring(Celest.Version) .. "，期望 1.2.0 → 请重启执行器清 HttpGet 缓存")
+end
+
 --==============================================================================
 -- 1. 创建星图窗口
 --   title    左上角标题
