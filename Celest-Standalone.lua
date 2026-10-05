@@ -152,10 +152,12 @@ local gui = mk("ScreenGui", {
 local ok = pcall(function() gui.Parent = game:GetService("CoreGui") end)
 if not ok or not gui.Parent then gui.Parent = LP:WaitForChild("PlayerGui") end
 
+-- 根容器全透明：不再有常驻实心背景，游戏画面直接透出
 local root = mk("Frame", {
 	Parent = gui,
 	Size = UDim2.fromScale(1, 1),
 	BackgroundColor3 = T.void,
+	BackgroundTransparency = 1,
 	BorderSizePixel = 0,
 })
 
@@ -331,6 +333,9 @@ end
 
 local selected = nil
 
+-- 拖动状态（必须在 makeStar 之前声明，供星点按钮闭包引用）
+local dragging, dragMoved, dragCtx = false, false, nil
+
 local function paintArc()
 	if not selected then return end
 	local v   = selected.star.v
@@ -422,6 +427,15 @@ local function makeStar(cat, star, deg)
 	btn.MouseEnter:Connect(function() focus(true) end)
 	btn.MouseLeave:Connect(function() focus(false) end)
 
+	-- 数值星：按下即选中并进入拖动；原地轻点则开/关选择
+	btn.MouseButton1Down:Connect(function()
+		if star.t ~= "value" then return end
+		local wasSel = (selected ~= nil and selected.node == node)
+		dragging, dragMoved = true, false
+		dragCtx = { node = node, star = star, dot = dot, val = val, wasSel = wasSel }
+		if not wasSel then SelectValue(node, star, dot, val) end
+	end)
+
 	btn.MouseButton1Click:Connect(function()
 		if star.t == "toggle" then
 			if star.n == "星象" then OpenWhisper("星象"); return end
@@ -429,8 +443,6 @@ local function makeStar(cat, star, deg)
 			paintDot(dot, star.on, false)
 			ripple(star.on)
 			HUDBus.Refresh()
-		else
-			SelectValue(node, star, dot, val)
 		end
 	end)
 	return node
@@ -715,9 +727,7 @@ end
 wi:GetPropertyChangedSignal("Text"):Connect(renderRes)
 
 ---------------------------------------------------------------- 输入
-local dragging = false
-
-UIS.InputBegan:Connect(function(input, gp)
+UIS.InputBegan:Connect(function(input)
 	local k = input.KeyCode
 	if k == Enum.KeyCode.LeftAlt or k == Enum.KeyCode.RightAlt then
 		if not TOUCH then OpenMap() end
@@ -732,11 +742,6 @@ UIS.InputBegan:Connect(function(input, gp)
 		elseif pinned then pinned = false; CloseMap() end
 		return
 	end
-	if gp then return end
-	if input.UserInputType == Enum.UserInputType.MouseButton1
-		or input.UserInputType == Enum.UserInputType.Touch then
-		dragging = (selected ~= nil)
-	end
 end)
 
 UIS.InputEnded:Connect(function(input)
@@ -745,18 +750,26 @@ UIS.InputEnded:Connect(function(input)
 	end
 	if input.UserInputType == Enum.UserInputType.MouseButton1
 		or input.UserInputType == Enum.UserInputType.Touch then
-		dragging = false
+		-- 按下后没有拖动 → 视为轻点，切换该数值星的选中状态
+		if dragging and dragCtx and not dragMoved and dragCtx.wasSel then
+			SelectValue(dragCtx.node, dragCtx.star, dragCtx.dot, dragCtx.val)
+		end
+		dragging, dragMoved, dragCtx = false, false, nil
 	end
 end)
 
 UIS.InputChanged:Connect(function(input)
-	if not dragging or not selected then return end
+	if not dragging or not dragCtx then return end
 	if input.UserInputType == Enum.UserInputType.MouseMovement
 		or input.UserInputType == Enum.UserInputType.Touch then
-		local v = math.clamp(selected.star.v + input.Delta.X / 420, 0, 1)
-		selected.star.v = v
-		if selected.val then selected.val.Text = tostring(math.floor(v * 100)) .. "%" end
-		paintArc()
+		local dx = input.Delta.X
+		if dx == 0 then return end
+		dragMoved = true
+		local star = dragCtx.star
+		local v = math.clamp(star.v + dx / 420, 0, 1)
+		star.v = v
+		if dragCtx.val then dragCtx.val.Text = tostring(math.floor(v * 100)) .. "%" end
+		if selected and selected.star == star then paintArc() end
 	end
 end)
 

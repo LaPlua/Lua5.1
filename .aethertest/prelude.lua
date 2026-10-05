@@ -105,6 +105,10 @@ function METHODS.SetAttribute(self, k, v) end
 function METHODS.GetFullName(self) return self.Name end
 function METHODS.GetDebugId(self) return "0" end
 function METHODS.Release() end
+function METHODS.CaptureFocus(self) end
+function METHODS.ReleaseFocus(self) end
+function METHODS.GetTouches(self) return {} end
+function METHODS.IsMouseButtonPressed(self) return false end
 
 function newInst(class)
 	local props = { ClassName = class, Name = class }
