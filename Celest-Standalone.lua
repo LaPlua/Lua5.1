@@ -12,6 +12,7 @@
 local Players      = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local UIS          = game:GetService("UserInputService")
+local RunService   = game:GetService("RunService")
 
 local LP    = Players.LocalPlayer
 local TOUCH = UIS.TouchEnabled and not UIS.MouseEnabled
@@ -216,6 +217,13 @@ local blank = mk("TextButton", {
 	BackgroundTransparency = 1, Text = "", AutoButtonColor = false, ZIndex = 3,
 })
 
+---------------------------------------------------------------- 星环开启时的幕布（关闭即隐去）
+local veil = mk("Frame", {
+	Parent = root, Size = UDim2.fromScale(1, 1),
+	BackgroundColor3 = T.void, BackgroundTransparency = 1,
+	BorderSizePixel = 0, ZIndex = 9,
+})
+
 ---------------------------------------------------------------- 星图容器
 local REF = 760
 local R_IN, R_OUT, ARC_R = 150, 300, 250
@@ -371,6 +379,52 @@ local function clearSelection()
 	arcLayer.Visible = false
 end
 
+---------------------------------------------------------------- 拖动（帧同步，稳定可靠）
+local dragConn = nil
+
+local function endDrag()
+	if dragConn then dragConn:Disconnect(); dragConn = nil end
+	-- 按下后没有真正移动 → 视为轻点，切换该数值星的选中状态
+	if dragging and dragCtx and not dragMoved and dragCtx.canToggle then
+		SelectValue(dragCtx.node, dragCtx.star, dragCtx.dot, dragCtx.val)
+	end
+	dragging, dragMoved, dragCtx = false, false, nil
+end
+
+-- noToggle=true 时（在圆弧大热区上按下），原地松手不会取消选中
+local function beginDrag(node, star, dot, val, noToggle)
+	local wasSel = (selected ~= nil and selected.node == node)
+	dragging, dragMoved = true, false
+	dragCtx = { node = node, star = star, dot = dot, val = val }
+	-- 轻点切换只在「原本已选中且不是从圆弧热区按下」时生效
+	dragCtx.canToggle = (not noToggle) and wasSel
+	if not wasSel then SelectValue(node, star, dot, val) end
+	if dragConn then dragConn:Disconnect(); dragConn = nil end
+	if not TOUCH then
+		-- 电脑：每帧读取鼠标绝对位置，避免 InputChanged 被 GUI 吞掉
+		local baseX, baseV = UIS:GetMouseLocation().X, star.v
+		dragConn = RunService.RenderStepped:Connect(function()
+			local dx = UIS:GetMouseLocation().X - baseX
+			if math.abs(dx) < .5 then return end
+			dragMoved = true
+			local v = math.clamp(baseV + dx / 420, 0, 1)
+			star.v = v
+			if val then val.Text = tostring(math.floor(v * 100)) .. "%" end
+			if selected and selected.star == star then paintArc() end
+		end)
+	end
+end
+
+---------------------------------------------------------------- 圆弧大热区
+-- 选中数值星后，在圆弧任意位置按住即可拖动（原地松手不会取消选中）
+local arcHit = mk("TextButton", {
+	Parent = arcLayer, Size = UDim2.fromScale(1, 1),
+	BackgroundTransparency = 1, Text = "", AutoButtonColor = false, ZIndex = 5,
+})
+arcHit.MouseButton1Down:Connect(function()
+	if selected then beginDrag(selected.node, selected.star, selected.dot, selected.val, true) end
+end)
+
 ---------------------------------------------------------------- 功能星
 local function makeStar(cat, star, deg)
 	local node = mk("Frame", {
@@ -430,10 +484,7 @@ local function makeStar(cat, star, deg)
 	-- 数值星：按下即选中并进入拖动；原地轻点则开/关选择
 	btn.MouseButton1Down:Connect(function()
 		if star.t ~= "value" then return end
-		local wasSel = (selected ~= nil and selected.node == node)
-		dragging, dragMoved = true, false
-		dragCtx = { node = node, star = star, dot = dot, val = val, wasSel = wasSel }
-		if not wasSel then SelectValue(node, star, dot, val) end
+		beginDrag(node, star, dot, val, false)
 	end)
 
 	btn.MouseButton1Click:Connect(function()
@@ -615,6 +666,7 @@ local function OpenMap()
 	if mapOpen then return end
 	mapOpen = true
 	map.Visible = true
+	tw(veil, .42, { BackgroundTransparency = .18 })
 	tw(map, .42, { GroupTransparency = 0 })
 	paintCategories()
 end
@@ -622,7 +674,9 @@ end
 local function CloseMap()
 	if not mapOpen then return end
 	mapOpen = false
+	endDrag()
 	clearSelection()
+	tw(veil, .34, { BackgroundTransparency = 1 })
 	local a = tw(map, .34, { GroupTransparency = 1 })
 	if a then
 		a.Completed:Connect(function()
@@ -750,18 +804,14 @@ UIS.InputEnded:Connect(function(input)
 	end
 	if input.UserInputType == Enum.UserInputType.MouseButton1
 		or input.UserInputType == Enum.UserInputType.Touch then
-		-- 按下后没有拖动 → 视为轻点，切换该数值星的选中状态
-		if dragging and dragCtx and not dragMoved and dragCtx.wasSel then
-			SelectValue(dragCtx.node, dragCtx.star, dragCtx.dot, dragCtx.val)
-		end
-		dragging, dragMoved, dragCtx = false, false, nil
+		endDrag()
 	end
 end)
 
 UIS.InputChanged:Connect(function(input)
-	if not dragging or not dragCtx then return end
-	if input.UserInputType == Enum.UserInputType.MouseMovement
-		or input.UserInputType == Enum.UserInputType.Touch then
+	-- 电脑端由 RenderStepped 处理；这里只服务触屏
+	if not TOUCH or not dragging or not dragCtx then return end
+	if input.UserInputType == Enum.UserInputType.Touch then
 		local dx = input.Delta.X
 		if dx == 0 then return end
 		dragMoved = true
@@ -778,7 +828,7 @@ local function resize()
 	local vp = Vector2.new(1280, 720)
 	local cam = workspace.CurrentCamera
 	if cam then vp = cam.ViewportSize end
-	mapScale.Scale = math.clamp(math.min(vp.X, vp.Y) / REF * (TOUCH and 1.0 or .95), .42, 1.05)
+	mapScale.Scale = math.clamp(math.min(vp.X, vp.Y) / REF * (TOUCH and 1.14 or 1.10), .58, 1.38)
 end
 resize()
 if workspace.CurrentCamera then
