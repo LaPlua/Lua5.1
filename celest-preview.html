@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>星穹 CELEST · 交互草图</title>
+<style>
+  :root{
+    --void:#05030a;
+    --void2:#0a0716;
+    --nebula-a:#2b1a52;
+    --nebula-b:#141d54;
+    --nebula-c:#3a1c50;
+    --star:#e9e6ff;
+    --accent:#b79dff;
+    --accent-2:#8a6bff;
+    --dim:rgba(205,198,255,.30);
+    --dim-2:rgba(205,198,255,.14);
+    --line:rgba(169,139,255,.10);
+    --line-2:rgba(169,139,255,.22);
+    --glow:rgba(169,139,255,.55);
+    --serif:"Noto Serif SC","Songti SC","Source Han Serif SC",serif;
+    --sans:"Noto Sans SC","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+    --ui:rgba(205,198,255,.42);
+    --ui-hi:rgba(226,221,255,.9);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;margin:0;background:var(--void);overflow:hidden}
+  body{font-family:var(--sans);color:var(--star);user-select:none}
+
+  #celest{position:relative;width:100vw;height:100vh;overflow:hidden}
+
+  /* ---------- 星云 ---------- */
+  .nebula{position:absolute;inset:-20%;z-index:0;pointer-events:none;opacity:.85}
+  .nebula span{position:absolute;border-radius:50%;filter:blur(90px);mix-blend-mode:screen}
+  .nebula .b1{width:60vmax;height:60vmax;left:-8%;top:-14%;background:radial-gradient(circle,var(--nebula-a),transparent 66%);animation:drift1 96s ease-in-out infinite}
+  .nebula .b2{width:52vmax;height:52vmax;right:-12%;top:6%;background:radial-gradient(circle,var(--nebula-b),transparent 66%);animation:drift2 120s ease-in-out infinite}
+  .nebula .b3{width:56vmax;height:56vmax;left:22%;bottom:-22%;background:radial-gradient(circle,var(--nebula-c),transparent 68%);animation:drift3 140s ease-in-out infinite}
+  @keyframes drift1{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(6vmax,4vmax) scale(1.14)}}
+  @keyframes drift2{0%,100%{transform:translate(0,0) scale(1.06)}50%{transform:translate(-7vmax,5vmax) scale(1)}}
+  @keyframes drift3{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-4vmax,-6vmax) scale(1.12)}}
+
+  .starfield{position:absolute;inset:0;z-index:1;pointer-events:none}
+  .sf{position:absolute;border-radius:50%;background:#fff;opacity:.5}
+  .sf.tw{animation:tw linear infinite}
+  @keyframes tw{0%,100%{opacity:.15}50%{opacity:.75}}
+
+  .vignette{position:absolute;inset:0;z-index:2;pointer-events:none;
+    background:radial-gradient(ellipse at 50% 46%,transparent 34%,rgba(3,2,7,.55) 78%,rgba(3,2,7,.9) 100%)}
+
+  /* ---------- 顶部 ---------- */
+  .hud{position:absolute;top:0;left:0;right:0;z-index:6;display:flex;justify-content:space-between;
+    align-items:flex-start;padding:26px 30px;pointer-events:none}
+  .brand{font-family:var(--serif);font-size:22px;letter-spacing:.5em;color:var(--ui-hi);
+    text-shadow:0 0 26px rgba(169,139,255,.5)}
+  .brand small{display:block;margin-top:6px;font-family:var(--sans);font-size:10px;
+    letter-spacing:.42em;color:var(--dim);text-shadow:none}
+  .trails{position:relative;display:flex;gap:9px;align-items:center;pointer-events:auto;cursor:default;
+    padding:8px 2px}
+  .trail{width:6px;height:6px;border-radius:50%;background:var(--accent);
+    box-shadow:0 0 10px 2px var(--glow);opacity:.85;animation:breath 3.4s ease-in-out infinite}
+  .trail:nth-child(2){animation-delay:.5s}
+  .trail:nth-child(3){animation-delay:1s}
+  .trail:nth-child(4){animation-delay:1.5s}
+  .trail:nth-child(5){animation-delay:2s}
+  .trail:nth-child(6){animation-delay:2.5s}
+  @keyframes breath{0%,100%{opacity:.45;transform:scale(.86)}50%{opacity:.95;transform:scale(1.08)}}
+  .trail-hint{position:absolute;right:0;top:26px;white-space:nowrap;font-size:11px;letter-spacing:.24em;
+    color:var(--ui);background:rgba(10,7,22,.62);border:1px solid var(--line);
+    padding:7px 14px;border-radius:999px;opacity:0;transform:translateY(-4px);
+    transition:.22s ease;backdrop-filter:blur(4px)}
+  .trails:hover .trail-hint{opacity:1;transform:translateY(0)}
+
+  /* ---------- 星图 ---------- */
+  .constellation{position:absolute;left:50%;top:50%;z-index:5;transform:translate(-50%,-50%);
+    width:min(88vmin,760px);height:min(88vmin,760px);
+    opacity:0;transition:opacity .42s ease;pointer-events:none}
+  #celest.open .constellation{opacity:1;pointer-events:auto}
+  #celest:not(.open) .constellation{transition:opacity .34s ease}
+
+  .ring-svg{position:absolute;inset:0;overflow:visible;pointer-events:none}
+  .ring-c{fill:none;stroke:var(--line);stroke-width:1}
+  .ring-tick{stroke:var(--line);stroke-width:1}
+  .orbit{fill:none;stroke:var(--line-2);stroke-width:1;stroke-dasharray:2 7;
+    stroke-linecap:round;opacity:0;transition:opacity .5s ease}
+  .orbit.lit{opacity:.9}
+
+  .core{position:absolute;left:50%;top:50%;width:0;height:0}
+  .core .halo{position:absolute;left:-46px;top:-46px;width:92px;height:92px;border-radius:50%;
+    background:radial-gradient(circle,rgba(183,157,255,.28),transparent 62%);
+    animation:pulse 5.5s ease-in-out infinite}
+  .core .dot{position:absolute;left:-4px;top:-4px;width:8px;height:8px;border-radius:50%;background:#fff;
+    box-shadow:0 0 18px 5px var(--glow)}
+  .core .spin{position:absolute;left:-33px;top:-33px;width:66px;height:66px;border-radius:50%;
+    border:1px solid var(--line-2);border-top-color:transparent;border-left-color:transparent;
+    animation:spin 22s linear infinite}
+  @keyframes pulse{0%,100%{opacity:.5;transform:scale(.9)}50%{opacity:1;transform:scale(1.06)}}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  .node{position:absolute;left:50%;top:50%;width:0;height:0;overflow:visible}
+  .node .tag{position:absolute;left:0;top:0;transform:translate(-50%,-50%);
+    display:flex;align-items:center;justify-content:center;cursor:pointer;
+    transition:transform .24s cubic-bezier(.2,.7,.3,1),opacity .24s}
+
+  /* 分类节点 */
+  .cat .tag{width:44px;height:44px;border-radius:50%;border:1px solid var(--line-2);
+    background:rgba(10,7,22,.5);font-size:15px;color:var(--ui);backdrop-filter:blur(3px)}
+  .cat .name{position:absolute;left:0;top:34px;transform:translateX(-50%);white-space:nowrap;
+    font-family:var(--serif);font-size:12.5px;letter-spacing:.34em;color:var(--dim);
+    transition:color .24s}
+  .cat.sel .tag{color:#fff;border-color:rgba(183,157,255,.6);
+    box-shadow:0 0 22px rgba(169,139,255,.4),inset 0 0 18px rgba(169,139,255,.18);transform:translate(-50%,-50%) scale(1.12)}
+  .cat.sel .name{color:var(--ui-hi)}
+  .cat:hover .name{color:var(--ui-hi)}
+
+  /* 功能星 */
+  .star .tag{flex-direction:column;gap:8px;width:150px;padding:8px 6px}
+  .star .dot{width:9px;height:9px;border-radius:50%;border:1px solid rgba(205,198,255,.42);
+    background:transparent;transition:.26s cubic-bezier(.2,.7,.3,1)}
+  .star .label{font-size:12px;letter-spacing:.2em;color:var(--dim);white-space:nowrap;
+    transition:color .24s,opacity .24s}
+  .star .val{font-size:10px;letter-spacing:.14em;color:var(--dim-2);font-variant-numeric:tabular-nums}
+  .star:hover .label{color:var(--ui-hi)}
+  .star:hover .dot{border-color:rgba(233,230,255,.9);box-shadow:0 0 14px rgba(169,139,255,.55)}
+  .star.on .dot{background:var(--accent);border-color:var(--accent);
+    box-shadow:0 0 16px 3px var(--glow)}
+  .star.on .label{color:rgba(226,221,255,.85)}
+  .star.sel .dot{background:#fff;border-color:#fff;box-shadow:0 0 20px 5px var(--glow)}
+  .star.sel .label{color:#fff}
+
+  .ripple{position:absolute;left:0;top:0;width:9px;height:9px;border-radius:50%;
+    border:1px solid var(--accent);transform:translate(-50%,-50%) scale(1);opacity:.8;pointer-events:none}
+  .ripple.go{animation:rip .9s ease-out forwards}
+  @keyframes rip{from{transform:translate(-50%,-50%) scale(1);opacity:.8}
+    to{transform:translate(-50%,-50%) scale(9);opacity:0}}
+
+  /* 数值弧 */
+  .arc-svg{position:absolute;inset:0;overflow:visible;pointer-events:none;opacity:0;transition:opacity .35s ease}
+  .arc-svg.show{opacity:1}
+  .arc-bg{fill:none;stroke:var(--line-2);stroke-width:1;stroke-linecap:round}
+  .arc-fg{fill:none;stroke:var(--accent);stroke-width:2;stroke-linecap:round;
+    filter:drop-shadow(0 0 6px rgba(169,139,255,.6))}
+  .arc-knob{fill:#fff;filter:drop-shadow(0 0 8px var(--glow))}
+  .arc-txt{position:absolute;left:50%;top:calc(50% + 96px);transform:translateX(-50%);
+    font-size:11px;letter-spacing:.3em;color:var(--ui-hi);opacity:0;transition:opacity .3s}
+  .arc-txt.show{opacity:1}
+
+  .center-hint{position:absolute;left:50%;top:calc(50% + 128px);transform:translateX(-50%);
+    white-space:nowrap;font-size:11px;letter-spacing:.34em;color:var(--dim);
+    opacity:0;transition:opacity .35s ease .1s;text-align:center}
+  #celest.open .center-hint{opacity:1}
+
+  /* ---------- 常驻星点 ---------- */
+  .sigil{position:absolute;right:30px;bottom:30px;z-index:7;width:30px;height:30px;
+    display:flex;align-items:center;justify-content:center;cursor:pointer}
+  .sigil i{display:block;width:7px;height:7px;border-radius:50%;background:rgba(183,157,255,.75);
+    box-shadow:0 0 12px 3px var(--glow);animation:pulse 4.5s ease-in-out infinite}
+  .sigil em{position:absolute;inset:0;border-radius:50%;border:1px solid var(--line-2);
+    animation:pulse 6s ease-in-out infinite}
+  .sigil:hover i{background:#fff}
+
+  /* ---------- 低语面板 ---------- */
+  .whisper{position:absolute;left:50%;bottom:12vh;z-index:9;transform:translateX(-50%) translateY(14px);
+    width:min(560px,88vw);opacity:0;pointer-events:none;transition:.28s cubic-bezier(.2,.7,.3,1)}
+  .whisper.show{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto}
+  .whisper .box{background:rgba(10,7,22,.72);border:1px solid var(--line-2);border-radius:14px;
+    padding:14px 18px;backdrop-filter:blur(10px);box-shadow:0 0 44px rgba(0,0,0,.6)}
+  .whisper input{width:100%;background:transparent;border:0;outline:0;color:var(--ui-hi);
+    font-family:var(--sans);font-size:15px;letter-spacing:.16em;padding:4px 0}
+  .whisper input::placeholder{color:var(--dim)}
+  .whisper .res{margin-top:10px;padding-top:10px;border-top:1px solid var(--line);max-height:34vh;overflow:auto}
+  .whisper .row{display:flex;justify-content:space-between;gap:12px;padding:7px 8px;border-radius:8px;
+    font-size:13px;letter-spacing:.14em;color:var(--dim);cursor:pointer}
+  .whisper .row:hover{background:rgba(169,139,255,.09);color:var(--ui-hi)}
+  .whisper .row b{font-weight:400;color:var(--dim-2);font-size:11px;letter-spacing:.2em}
+  .whisper .empty{font-size:12px;letter-spacing:.2em;color:var(--dim-2);padding:6px 8px}
+
+  /* ---------- 模式与说明 ---------- */
+  .foot{position:absolute;left:30px;bottom:28px;z-index:7;font-size:11px;letter-spacing:.2em;
+    color:var(--dim-2);line-height:2;pointer-events:none}
+  .foot em{color:var(--ui);font-style:normal}
+  .mode{position:absolute;right:30px;bottom:78px;z-index:7;display:flex;gap:1px;
+    border:1px solid var(--line);border-radius:999px;overflow:hidden;background:rgba(10,7,22,.5)}
+  .mode button{background:transparent;border:0;color:var(--dim);font-family:var(--sans);
+    font-size:11px;letter-spacing:.24em;padding:7px 14px;cursor:pointer;transition:.2s}
+  .mode button:hover{color:var(--ui-hi)}
+  .mode button.on{color:#fff;background:rgba(169,139,255,.16)}
+
+  .whisper-hint{position:absolute;left:50%;bottom:28px;transform:translateX(-50%);z-index:7;
+    font-size:11px;letter-spacing:.28em;color:var(--dim-2);cursor:pointer;transition:.2s}
+  .whisper-hint:hover{color:var(--ui-hi)}
+
+  /* 入场：星辰汇聚 */
+  #celest.gathering .constellation{opacity:0}
+  #celest.gather-done .constellation{opacity:0}
+  .enter{position:absolute;left:50%;top:50%;width:0;height:0;z-index:8;pointer-events:none}
+  .enter i{position:absolute;left:0;top:0;width:4px;height:4px;border-radius:50%;background:#fff;
+    opacity:0;box-shadow:0 0 10px 2px var(--glow)}
+  .enter.go i{animation:converge 1s cubic-bezier(.3,.1,.2,1) forwards}
+  @keyframes converge{
+    0%{opacity:0;transform:translate(-50%,-50%) rotate(var(--a)) translate(var(--r))}
+    18%{opacity:1}
+    100%{opacity:0;transform:translate(-50%,-50%) rotate(var(--a)) translate(0)}
+  }
+  .flash{position:absolute;left:50%;top:50%;width:6px;height:6px;border-radius:50%;z-index:8;
+    background:#fff;transform:translate(-50%,-50%) scale(0);pointer-events:none}
+  .flash.go{animation:flash 1.05s ease-out forwards}
+  @keyframes flash{0%{transform:translate(-50%,-50%) scale(0);opacity:.9}
+    60%{transform:translate(-50%,-50%) scale(10);opacity:.22}
+    100%{transform:translate(-50%,-50%) scale(26);opacity:0}}
+
+  @media (prefers-reduced-motion: reduce){
+    .nebula span,.sf,.core .halo,.core .spin,.sigil i,.sigil em{animation:none!important}
+  }
+</style>
+</head>
+<body>
+<div id="celest" class="gathering" data-mode="pc">
+
+  <div class="nebula"><span class="b1"></span><span class="b2"></span><span class="b3"></span></div>
+  <div class="starfield" id="starfield"></div>
+  <div class="vignette"></div>
+
+  <header class="hud">
+    <div class="brand">星穹<small>CELEST</small></div>
+    <div class="trails" id="trails">
+      <span class="trail-hint" id="trailHint">无星亮起</span>
+    </div>
+  </header>
+
+  <div class="constellation" id="map">
+    <svg class="ring-svg" id="rings" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
+    <svg class="arc-svg" id="arcSvg" viewBox="0 0 760 760" preserveAspectRatio="xMidYMid meet"></svg>
+    <div class="core"><div class="halo"></div><div class="spin"></div><div class="dot"></div></div>
+    <div id="nodes"></div>
+    <div class="arc-txt" id="arcTxt"></div>
+    <div class="center-hint" id="centerHint">按住 <em>ALT</em> 呼出 · 松手归寂</div>
+  </div>
+
+  <div class="enter" id="enter"></div>
+  <div class="flash" id="flash"></div>
+
+  <div class="sigil" id="sigil" title="星点"><em></em><i></i></div>
+
+  <div class="mode">
+    <button id="mPc" class="on">电脑</button>
+    <button id="mPh">手机</button>
+  </div>
+
+  <div class="foot" id="foot">
+    <em>ALT</em> 按住呼出 · 松手归寂<br>
+    点星点 <em>亮/灭</em> · 拖弧线 <em>调值</em> · 长按 <em>刻度环</em>
+  </div>
+
+  <div class="whisper-hint" id="whisperHint">CTRL + K · 低语</div>
+
+  <div class="whisper" id="whisper">
+    <div class="box">
+      <input id="wq" placeholder="低语一个名字…" autocomplete="off" spellcheck="false">
+      <div class="res" id="wres"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const root = document.getElementById('celest');
+  const map = document.getElementById('map');
+  const nodes = document.getElementById('nodes');
+  const rings = document.getElementById('rings');
+  const arcSvg = document.getElementById('arcSvg');
+  const arcTxt = document.getElementById('arcTxt');
+  const centerHint = document.getElementById('centerHint');
+  const foot = document.getElementById('foot');
+  const trails = document.getElementById('trails');
+  const trailHint = document.getElementById('trailHint');
+
+  /* ---------------- 数据 ---------------- */
+  const DATA = [
+    { id:'combat', glyph:'✦', name:'兵戈', stars:[
+      { n:'自动瞄准', t:'toggle', on:false },
+      { n:'穿墙视野', t:'toggle', on:true  },
+      { n:'无后坐力', t:'toggle', on:false },
+      { n:'弹道预判', t:'toggle', on:true  },
+      { n:'平滑阻尼', t:'value',  v:0.35   },
+      { n:'视野半径', t:'value',  v:0.62   },
+    ]},
+    { id:'sight', glyph:'◈', name:'观照', stars:[
+      { n:'描边高亮', t:'toggle', on:true  },
+      { n:'骨架绘制', t:'toggle', on:false },
+      { n:'方框标记', t:'toggle', on:false },
+      { n:'距离读数', t:'toggle', on:true  },
+      { n:'描边浓度', t:'value',  v:0.48   },
+      { n:'绘制层数', t:'value',  v:0.75   },
+    ]},
+    { id:'move', glyph:'❖', name:'行止', stars:[
+      { n:'疾行',     t:'toggle', on:false },
+      { n:'二段跃',   t:'toggle', on:false },
+      { n:'凌波',     t:'toggle', on:false },
+      { n:'牵引',     t:'toggle', on:false },
+      { n:'速度倍率', t:'value',  v:0.40   },
+      { n:'滞空时间', t:'value',  v:0.20   },
+    ]},
+    { id:'order', glyph:'⊙', name:'律令', stars:[
+      { n:'星象',     t:'toggle', on:false },  /* 仅接口，未实现 */
+      { n:'低语面板', t:'toggle', on:true  },
+      { n:'星痕常显', t:'toggle', on:true  },
+      { n:'星痕显名', t:'toggle', on:true  },
+      { n:'归寂延时', t:'value',  v:0.30   },
+      { n:'动效浓度', t:'value',  v:0.80   },
+    ]},
+  ];
+
+  let active = 0;             /* 当前分类 */
+  let selStar = null;         /* 选中的数值星 */
+  let pinned = false;         /* 手机：星图钉住 */
+  let mode = 'pc';
+
+  const R_IN = 150, R_OUT = 300, S = 760;   /* viewBox 760 基准；实际用百分比定位 */
+  const CX = 50, CY = 50;                    /* 百分比 */
+
+  /* ---------------- 星场 ---------------- */
+  (function starfield(){
+    const sf = document.getElementById('starfield');
+    const n = window.innerWidth < 640 ? 110 : 190;
+    let html = '';
+    for(let i=0;i<n;i++){
+      const sz = Math.random()<0.88 ? 1 : (Math.random()<0.7?1.6:2.2);
+      const tw = Math.random()<0.42;
+      html += `<span class="sf${tw?' tw':''}" style="left:${(Math.random()*100).toFixed(2)}%;
+        top:${(Math.random()*100).toFixed(2)}%;width:${sz}px;height:${sz}px;
+        opacity:${(0.18+Math.random()*0.5).toFixed(2)};
+        ${tw?`animation-duration:${(3+Math.random()*5).toFixed(1)}s;animation-delay:${(Math.random()*5).toFixed(1)}s`:''}"></span>`;
+    }
+    sf.innerHTML = html;
+  })();
+
+  /* ---------------- 环 ---------------- */
+  function drawRings(){
+    const pct = r => r/S*100;
+    let h = '';
+    [[R_IN],[R_OUT]].forEach(([r])=>{
+      h += `<circle class="ring-c" cx="${CX}" cy="${CY}" r="${pct(r)}"></circle>`;
+    });
+    for(let i=0;i<72;i++){
+      const a = i/72*Math.PI*2;
+      const long = i%6===0;
+      const r1 = pct(R_OUT+2), r2 = pct(R_OUT+(long?12:7));
+      h += `<line class="ring-tick" x1="${CX+Math.cos(a)*r1}" y1="${CY+Math.sin(a)*r1}"
+              x2="${CX+Math.cos(a)*r2}" y2="${CY+Math.sin(a)*r2}" opacity="${long?.8:.35}"></line>`;
+    }
+    rings.innerHTML = h;
+  }
+  drawRings();
+
+  /* ---------------- 节点布局 ---------------- */
+  function place(node, r, angleDeg){
+    const a = angleDeg*Math.PI/180;
+    const x = CX + Math.cos(a)*(r/S*100);
+    const y = CY + Math.sin(a)*(r/S*100);
+    node.style.left = x+'%';
+    node.style.top  = y+'%';
+  }
+
+  function buildMap(){
+    nodes.innerHTML = '';
+    /* 内环：分类 */
+    DATA.forEach((cat,i)=>{
+      const el = document.createElement('div');
+      el.className = 'node cat'+(i===active?' sel':'');
+      el.dataset.i = i;
+      el.innerHTML = `<div class="tag">${cat.glyph}</div><div class="name">${cat.name}</div>`;
+      place(el, R_IN, -90 + i*(360/DATA.length));
+      el.querySelector('.tag').addEventListener('click', ()=>switchCat(i));
+      nodes.appendChild(el);
+    });
+    /* 外环：功能星 */
+    const cat = DATA[active];
+    cat.stars.forEach((s,i)=>{
+      const el = document.createElement('div');
+      el.className = 'node star'+(s.t==='toggle'&&s.on?' on':'');
+      el.dataset.i = i;
+      el.dataset.kind = s.t;
+      const val = s.t==='value' ? `<span class="val">${Math.round(s.v*100)}%</span>` : '';
+      el.innerHTML = `<div class="tag"><span class="dot"></span><span class="label">${s.n}</span>${val}</div>`;
+      place(el, R_OUT, -90 + i*(360/cat.stars.length) + (360/cat.stars.length)/2 - 90 + 90);
+      const tag = el.querySelector('.tag');
+      tag.addEventListener('mouseenter', ()=>hoverStar(el,true));
+      tag.addEventListener('mouseleave', ()=>hoverStar(el,false));
+      tag.addEventListener('click', (e)=>{ e.stopPropagation(); tapStar(el, s); });
+      nodes.appendChild(el);
+    });
+    /* 星轨连线 */
+    const catEls = [...nodes.querySelectorAll('.cat')];
+    catEls.forEach((el,i)=>{
+      if(i!==active) return;
+      const orbitG = document.createElementNS('http://www.w3.org/2000/svg','g');
+      orbitG.setAttribute('id','orbits');
+      const aA = (-90 + i*(360/DATA.length))*Math.PI/180;
+      [...nodes.querySelectorAll('.star')].forEach(st=>{
+        const r = st.querySelector('.tag').getBoundingClientRect();
+        const nodeR = st.getBoundingClientRect();
+        const b = nodeR.width ? Math.atan2(nodeR.top - map.getBoundingClientRect().top - map.getBoundingClientRect().height/2,
+                                           nodeR.left - map.getBoundingClientRect().left - map.getBoundingClientRect().width/2) : 0;
+      });
+    });
+    refreshTrails();
+  }
+
+  function switchCat(i){
+    if(i===active) return;
+    active = i; selStar = null;
+    hideArc();
+    buildMap();
+    /* 重排动画：外环星淡入 */
+    [...nodes.querySelectorAll('.star')].forEach((el,k)=>{
+      el.style.transition='opacity .34s ease';
+      el.style.opacity='0';
+      setTimeout(()=>{ el.style.opacity='1'; }, 40 + k*26);
+    });
+  }
+
+  function hoverStar(el, on){
+    /* 悬停，只做视觉；点击才是切换 */
+  }
+
+  /* ---------------- 星点点击 ---------------- */
+  function tapStar(el, s){
+    if(s.t==='toggle'){
+      if(s.n==='星象'){ whisperOpen('星象'); return; }  /* 仅接口 */
+      s.on = !s.on;
+      el.classList.toggle('on', s.on);
+      ripple(el, s.on);
+      refreshTrails();
+    }else{
+      selectStar(el, s);
+    }
+  }
+
+  function ripple(el, big){
+    const r = document.createElement('span');
+    r.className = 'ripple';
+    if(big) r.style.borderColor='#fff';
+    el.appendChild(r);
+    requestAnimationFrame(()=>r.classList.add('go'));
+    setTimeout(()=>r.remove(), 950);
+  }
+
+  /* ---------------- 数值弧 ---------------- */
+  function selectStar(el, s){
+    if(selStar && selStar.el===el){ hideArc(); return; }
+    if(selStar) selStar.el.classList.remove('sel');
+    selStar = { el, s };
+    el.classList.add('sel');
+    showArc(s.v);
+  }
+  function showArc(v){
+    arcSvg.classList.add('show');
+    arcTxt.classList.add('show');
+    paintArc(v);
+  }
+  function hideArc(){
+    if(selStar) selStar.el.classList.remove('sel');
+    selStar = null;
+    arcSvg.classList.remove('show');
+    arcTxt.classList.remove('show');
+  }
+  function paintArc(v){
+    const r = 250, cx = 380, cy = 380;
+    const a0 = -125, a1 = 125;
+    const a = a0 + (a1-a0)*v;
+    const p0 = polar(cx,cy,r,a0), p1 = polar(cx,cy,r,a1), pk = polar(cx,cy,r,a);
+    const large = (a1-a0)>180?1:0, largeK = (a-a0)>180?1:0;
+    arcSvg.innerHTML = `
+      <path class="arc-bg" d="M ${p0.x} ${p0.y} A ${r} ${r} 0 ${large} 1 ${p1.x} ${p1.y}"/>
+      <path class="arc-fg" d="M ${p0.x} ${p0.y} A ${r} ${r} 0 ${largeK} 1 ${pk.x} ${pk.y}"/>
+      <circle class="arc-knob" cx="${pk.x}" cy="${pk.y}" r="5"/>
+    `;
+    if(selStar){
+      const vb = arcSvg.viewBox.baseVal;
+      arcSvg.setAttribute('viewBox', `${cx-r-30} ${cy-r-30} ${(r+30)*2} ${(r+30)*2}`);
+    }
+    arcTxt.textContent = selStar ? `${selStar.s.n} · ${Math.round(v*100)}%` : '';
+    centerHint.textContent = '沿弧线拖动调值 · 长按星点出刻度环';
+  }
+  function polar(cx,cy,r,deg){ const a=deg*Math.PI/180; return { x:cx+Math.cos(a)*r, y:cy+Math.sin(a)*r }; }
+
+  /* 拖动调值 */
+  let dragging=false;
+  map.addEventListener('pointerdown', ()=>{
+    if(selStar){ dragging=true; }
+  });
+  window.addEventListener('pointermove', (e)=>{
+    if(!dragging || !selStar) return;
+    const rect = map.getBoundingClientRect();
+    const cx = rect.left+rect.width/2, cy = rect.top+rect.height/2;
+    let deg = Math.atan2(e.clientY-cy, e.clientX-cx)*180/Math.PI;
+    if(deg>90) deg-=360; if(deg<-90) deg+=360;
+    deg = Math.max(-125, Math.min(125, deg));
+    const v = (deg+125)/250;
+    selStar.s.v = v;
+    const val = selStar.el.querySelector('.val');
+    if(val) val.textContent = Math.round(v*100)+'%';
+    paintArc(v);
+  });
+  window.addEventListener('pointerup', ()=>{ dragging=false; });
+
+  /* ---------------- 星痕 ---------------- */
+  const OFF_NAME = { '律令': 1 };
+  function activeList(){
+    const out = [];
+    DATA.forEach(c=>c.stars.forEach(s=>{
+      if(s.t==='toggle' && s.on && s.n!=='星象' && s.n!=='星痕常显' && s.n!=='星痕显名' && s.n!=='低语面板') out.push(s.n);
+    }));
+    return out;
+  }
+  function refreshTrails(){
+    const list = activeList();
+    [...trails.querySelectorAll('.trail')].forEach(t=>t.remove());
+    list.slice(0,6).forEach((_,i)=>{
+      const t = document.createElement('span');
+      t.className='trail'; t.style.animationDelay=(i*0.45)+'s';
+      trails.appendChild(t);
+    });
+    trailHint.textContent = list.length ? list.join(' · ') : '无星亮起';
+  }
+
+  /* ---------------- 呼出 / 归寂 ---------------- */
+  function openMap(){ root.classList.add('open'); centerHint.textContent = mode==='pc'?'按住 <em>ALT</em> 呼出 · 松手归寂':'点星点归寂 · 点空白亦可'; }
+  function closeMap(){ root.classList.remove('open'); if(selStar) hideArc(); }
+
+  window.addEventListener('keydown', (e)=>{
+    if(e.key==='Alt'){ e.preventDefault(); openMap(); }
+    if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='k'){ e.preventDefault(); whisperToggle(); }
+  });
+  window.addEventListener('keyup', (e)=>{
+    if(e.key==='Alt' && mode==='pc' && !pinned){ closeMap(); }
+  });
+
+  const sigil = document.getElementById('sigil');
+  sigil.addEventListener('click', ()=>{
+    if(root.classList.contains('open')){ closeMap(); }
+    else { openMap(); if(mode==='ph') pinned=true; }
+  });
+  map.addEventListener('click', (e)=>{
+    if(e.target.closest('.tag')) return;
+    if(mode==='ph'){ closeMap(); pinned=false; }
+    else if(selStar){ hideArc(); }
+  });
+
+  /* ---------------- 低语 ---------------- */
+  const whisper = document.getElementById('whisper');
+  const wq = document.getElementById('wq');
+  const wres = document.getElementById('wres');
+  document.getElementById('whisperHint').addEventListener('click', whisperToggle);
+
+  function whisperToggle(){ whisper.classList.contains('show') ? whisperClose() : whisperOpen(); }
+  function whisperOpen(prefill){
+    whisper.classList.add('show');
+    if(prefill) wq.value = prefill;
+    renderRes();
+    setTimeout(()=>wq.focus(), 60);
+  }
+  function whisperClose(){ whisper.classList.remove('show'); wq.value=''; }
+  wq.addEventListener('input', renderRes);
+  wq.addEventListener('keydown', (e)=>{ if(e.key==='Escape') whisperClose(); });
+  function renderRes(){
+    const q = wq.value.trim();
+    const rows = [];
+    DATA.forEach((c,ci)=>c.stars.forEach((s,si)=>{
+      if(q && !s.n.includes(q) && !c.name.includes(q)) return;
+      rows.push({c,ci,s,n:c.name});
+    }));
+    if(!rows.length){ wres.innerHTML = '<div class="empty">虚空无应…</div>'; return; }
+    wres.innerHTML = rows.slice(0,9).map(r=>
+      `<div class="row" data-ci="${r.ci}"><span>${r.s.n}</span><b>${r.n}</b></div>`).join('');
+    [...wres.querySelectorAll('.row')].forEach(el=>{
+      el.addEventListener('click', ()=>{
+        const ci = +el.dataset.ci;
+        switchCat(ci);
+        const star = [...nodes.querySelectorAll('.star')].find(s=>s.querySelector('.label').textContent===el.querySelector('span').textContent);
+        if(star){ star.querySelector('.dot').style.transform='scale(1.9)';
+          setTimeout(()=>star.querySelector('.dot').style.transform='', 420); }
+        whisperClose();
+      });
+    });
+  }
+
+  /* ---------------- 模式 ---------------- */
+  const mPc = document.getElementById('mPc'), mPh = document.getElementById('mPh');
+  function setMode(m){
+    mode = m;
+    root.dataset.mode = m;
+    mPc.classList.toggle('on', m==='pc');
+    mPh.classList.toggle('on', m==='ph');
+    if(m==='ph'){
+      foot.innerHTML = '点右下 <em>星点</em> 呼出 · 再点归寂<br>点 <em>星点</em>亮灭 · <em>长按</em>看名字 · 拖弧调值';
+      centerHint.innerHTML = '点星点归寂 · 点空白亦可';
+      pinned = root.classList.contains('open');
+    }else{
+      foot.innerHTML = '<em>ALT</em> 按住呼出 · 松手归寂<br>点星点 <em>亮/灭</em> · 拖弧线 <em>调值</em> · 长按 <em>刻度环</em>';
+      centerHint.innerHTML = '按住 <em>ALT</em> 呼出 · 松手归寂';
+      pinned = false;
+    }
+  }
+  mPc.addEventListener('click', ()=>setMode('pc'));
+  mPh.addEventListener('click', ()=>setMode('ph'));
+
+  /* ---------------- 入场 ---------------- */
+  function gather(){
+    const box = document.getElementById('enter');
+    let h='';
+    for(let i=0;i<64;i++){
+      const a = Math.random()*360;
+      const r = 240 + Math.random()*380;
+      h += `<i style="--a:${a.toFixed(0)}deg;--r:${r.toFixed(0)}px;animation-delay:${(Math.random()*0.06).toFixed(2)}s"></i>`;
+    }
+    box.innerHTML = h;
+    requestAnimationFrame(()=>{
+      box.classList.add('go');
+      document.getElementById('flash').classList.add('go');
+    });
+    setTimeout(()=>{
+      root.classList.remove('gathering');
+      box.remove();
+      const f = document.getElementById('flash'); if(f) f.remove();
+      buildMap();
+    }, 1000);
+  }
+
+  /* ---------------- 初始 ---------------- */
+  buildMap();
+  gather();
+  setMode('pc');
+
+  /* 手机：长按星点显示名字（这里用 hover 已有极淡名字，长按增强） */
+  nodes.addEventListener('pointerdown', (e)=>{
+    const tag = e.target.closest('.star .tag');
+    if(!tag) return;
+    const el = tag.parentElement;
+    el.dataset.press = setTimeout(()=>{
+      if(mode==='ph'){ el.querySelector('.label').style.color='#fff'; }
+    }, 260);
+  });
+})();
+</script>
+</body>
+</html>
