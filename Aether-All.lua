@@ -169,11 +169,11 @@ local function fmtNum(v, step)
 	return s
 end
 
-local function debounce(fn, wait)
+local function debounce(fn, waitTime)
 	local last = 0
 	return function(...)
 		local now = os.clock()
-		if now - last >= (wait or 0.4) then
+		if now - last >= (waitTime or 0.4) then
 			last = now
 			return fn(...)
 		end
@@ -385,7 +385,6 @@ local function icon(parent, name, size, color, props)
 		else
 			corner(f, props.Radius or 1.5)
 		end
-		box[i] = f
 	end
 	return box
 end
@@ -474,11 +473,10 @@ local function brackets(parent, color, size, inset, thick, z)
 		v.Position = UDim2.new(x, px + (px > 0 and -thick or 0), y, py)
 		return h, v
 	end
-	local a1 = L(0, 0, -1, -1)
-	local a2 = L(1, 0, 1, -1)
-	local a3 = L(0, 1, -1, 1)
-	local a4 = L(1, 1, 1, 1)
-	holder.Corner = { a1, a2, a3, a4 }
+	L(0, 0, -1, -1)
+	L(1, 0, 1, -1)
+	L(0, 1, -1, 1)
+	L(1, 1, 1, 1)
 	return holder
 end
 
@@ -501,9 +499,6 @@ local function scanline(parent, color, height, z, speed)
 	g.Color = ColorSequence.new(color)
 	local tw = TweenService:Create(line, TweenInfo.new(speed or 5.5, Enum.EasingStyle.Linear, Enum.EasingDirection.Out, -1), {
 		Position = UDim2.fromScale(0, 1),
-	})
-	local tw2 = TweenService:Create(line, TweenInfo.new(speed or 5.5, Enum.EasingStyle.Linear, Enum.EasingDirection.Out, -1), {
-		Position = UDim2.fromScale(0, -0.05),
 	})
 	tw:Play()
 	return line, g
@@ -657,8 +652,11 @@ local function showTip(lib, text, pos, accent)
 			Size = UDim2.new(1, 0, 0, 24), Parent = tip,
 		})
 	end
-	tip.TextLabel.Text = tostring(text)
-	tip.TextLabel.TextColor3 = Aether.Theme.Text
+	local label = tip:FindFirstChild("T")
+	if label then
+		label.Text = tostring(text)
+		label.TextColor3 = Aether.Theme.Text
+	end
 	local p = pos or cursorPos()
 	tip.Position = UDim2.fromOffset(p.X + 14, p.Y + 16)
 end
@@ -1115,6 +1113,7 @@ function Section:_Wire(item, cfg, kind, api_tbl)
 	cfg = cfg or {}
 	item.Kind = kind
 	item.Config = cfg
+	item.Section = self
 	item.Set = api_tbl.Set
 	item.Get = api_tbl.Get
 	item.Run = api_tbl.Run
@@ -1131,8 +1130,8 @@ function Section:_Wire(item, cfg, kind, api_tbl)
 				end)
 			end
 		end
-		api_tbl.Set = function(v, fire)
-			rawSet(v, false)
+		api_tbl.Set = function(_, v, fire)
+			rawSet(item, v, false)
 			rebind()
 			if fire then
 				self.Library:_AutoSave()
@@ -1149,14 +1148,14 @@ function Section:_Wire(item, cfg, kind, api_tbl)
 
 	if cfg.Flag and api_tbl.Set then
 		self.Library._Setters[cfg.Flag] = function(v, fire)
-			pcall(function() api_tbl.Set(v, fire) end)
+			pcall(function() item:Set(v, fire) end)
 		end
 		-- 若本地配置里存过该开关，则在控件注册后回填
 		local saved = self.Library._saved
 		if saved and saved[cfg.Flag] ~= nil then
 			local sv = saved[cfg.Flag]
 			task.defer(function()
-				pcall(function() api_tbl.Set(sv, false) end)
+				pcall(function() item:Set(sv, false) end)
 			end)
 		end
 	end
@@ -1254,9 +1253,9 @@ function Section:Toggle(cfg)
 		on = v and true or false
 		paint(true)
 		if cfg.Flag then Aether.Flags[cfg.Flag] = on end
-		Section.Refresh(self)
+		Section.Refresh(self.Section)
 		if fire then
-			self.Library:_AutoSave()
+			self.Section.Library:_AutoSave()
 			if cfg.Callback then task.spawn(cfg.Callback, on) end
 		end
 	end
@@ -1452,7 +1451,7 @@ function Section:Slider(cfg)
 		val = clamp(round(tonumber(v) or min, step), min, max)
 		paint(true)
 		if cfg.Flag then Aether.Flags[cfg.Flag] = val end
-		Section.Refresh(self)
+		Section.Refresh(self.Section)
 		if fire then
 			if cfg.Callback then task.spawn(cfg.Callback, val) end
 		end
@@ -1542,9 +1541,9 @@ function Section:Segmented(cfg)
 		idx = clamp(math.floor(n), 1, #opts)
 		paint(true)
 		if cfg.Flag then Aether.Flags[cfg.Flag] = opts[idx] end
-		Section.Refresh(self)
+		Section.Refresh(self.Section)
 		if fire then
-			self.Library:_AutoSave()
+			self.Section.Library:_AutoSave()
 			if cfg.Callback then task.spawn(cfg.Callback, opts[idx], idx) end
 		end
 	end
@@ -1714,7 +1713,7 @@ function Section:Dropdown(cfg)
 			end
 		end
 		label()
-		Section.Refresh(self)
+		Section.Refresh(self.Section)
 		if fire and cfg.Callback then task.spawn(cfg.Callback, self:Get()) end
 	end
 	function item:Get() return multi and sel or items[sel] end
