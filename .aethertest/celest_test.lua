@@ -62,17 +62,21 @@ local beforeTxt = table.concat(beforeTxts, ",")
 try("drain2", function() __drain(2000) end)
 
 local btns = descendants("TextButton")
+
+-- 模拟鼠标：GetMouseLocation 返回可变坐标，拖动靠 RenderStepped 帧循环
+local MOUSE = Vector2.new(640, 360)
+UIS.GetMouseLocation = function() return MOUSE end
+local RenderStepped = game:GetService("RunService").RenderStepped
+
 try("press-down", function()
 	for _, b in ipairs(btns) do b.MouseButton1Down:Fire() end
 end)
 
-local drag = {
-	UserInputType = Enum.UserInputType.MouseMovement,
-	KeyCode = Enum.KeyCode.Unknown,
-	Position = Vector3.new(300, 300, 0),
-	Delta = Vector3.new(200, 0, 0),
-}
-try("drag", function() UIS.InputChanged:Fire(drag) end)
+-- 鼠标右移 200px（按住状态下）
+MOUSE = Vector2.new(840, 360)
+try("frame-drag", function()
+	for _ = 1, 3 do RenderStepped:Fire() end
+end)
 
 local endin = {
 	UserInputType = Enum.UserInputType.MouseButton1,
