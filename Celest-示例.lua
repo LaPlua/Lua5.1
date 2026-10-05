@@ -10,8 +10,8 @@ local Celest = loadstring(game:HttpGet(
 ))()
 
 -- 版本守卫：如果拉到的是旧缓存，控制台会直接报警
-if Celest.Version ~= "1.2.0" then
-	warn("[Celest] 实际加载到 " .. tostring(Celest.Version) .. "，期望 1.2.0 → 重启执行器清缓存")
+if Celest.Version ~= "1.3.0" then
+	warn("[Celest] 实际加载到 " .. tostring(Celest.Version) .. "，期望 1.3.0 → 重启执行器清缓存")
 end
 
 ---------------------------------------------------------------- 建窗口

@@ -393,10 +393,11 @@ function Celest._Cat:Toggle(name, default, cb)
 	return addItem(self, { kind = "toggle", name = name, value = default and true or false, cb = cb })
 end
 
-function Celest._Cat:Slider(name, min, max, default, cb)
+-- onCb 可选：滑块星点按开 / 关时触发 onCb(on)；cb 仍只在调值时触发
+function Celest._Cat:Slider(name, min, max, default, cb, onCb)
 	min, max = min or 0, max or 100
 	local d = default or min
-	return addItem(self, { kind = "slider", name = name, min = min, max = max, value = d, cb = cb })
+	return addItem(self, { kind = "slider", name = name, min = min, max = max, value = d, cb = cb, on = true, onCb = onCb })
 end
 
 function Celest._Cat:Button(name, cb)
@@ -666,11 +667,11 @@ function Celest:_build()
 				TextColor3 = on and T.star or T.dim, TextTransparency = on and .02 or .34,
 				TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 61,
 			})
-			mk("UIPadding", { Parent = b, PaddingLeft = UDim.new(0, 16) })
+			mk("UIPadding", { Parent = b, PaddingLeft = UDim.new(0, 22) })
 			if on then
 				local mark = mk("Frame", {
-					Parent = b, Size = UDim2.fromOffset(3, rowH - 8),
-					Position = UDim2.new(0, 7, .5, 0), AnchorPoint = Vector2.new(0, .5),
+					Parent = b, Size = UDim2.fromOffset(3, 12),
+					Position = UDim2.new(0, 10, .5, 0), AnchorPoint = Vector2.new(0, .5),
 					BackgroundColor3 = T.accent, BackgroundTransparency = .05, BorderSizePixel = 0, ZIndex = 61,
 				})
 				round(mark, 1)
@@ -700,7 +701,7 @@ function Celest:_build()
 			BackgroundTransparency = 1, Text = "", AutoButtonColor = false, ZIndex = 6,
 		})
 		local dot = circle(node, 9, T.star, 1); dot.ZIndex = 6
-		paintDot(dot, item.kind == "toggle" and item.value or false, false)
+		paintDot(dot, (item.kind == "toggle" and item.value) or (item.kind == "slider" and item.on) or false, false)
 
 		local label = mk("TextLabel", {
 			Parent = node, BackgroundTransparency = 1,
@@ -794,6 +795,15 @@ function Celest:_build()
 			elseif item.kind == "dropdown" then
 				ripple(false)
 				openDropdown(item, ox, oy)
+			elseif item.kind == "slider" then
+				-- 单击（未拖动）→ 像开关一样切换启用 / 停用；拖动仍由 setT 调值
+				if not self.dragMoved then
+					item.on = not item.on
+					paintDot(dot, item.on, false)
+					ripple(item.on)
+					self:_refreshTrail()
+					if item.onCb then task.spawn(item.onCb, item.on) end
+				end
 			end
 		end)
 		return node
@@ -1173,20 +1183,21 @@ function Celest:_build()
 	})
 	-- 搜索入口（仅开环时出现）
 	local searchBtn = mk("TextButton", {
-		Parent = brand, Size = UDim2.fromOffset(88, 26),
+		Parent = brand, Size = UDim2.fromOffset(92, 26),
 		Position = UDim2.new(0, 34, 0, 82),
 		BackgroundColor3 = T.panel, BackgroundTransparency = .5,
 		Font = Enum.Font.Gotham, TextSize = 12, TextColor3 = T.dim, TextTransparency = .3,
-		Text = "低语", AutoButtonColor = false, ZIndex = 20,
+		Text = "低语", TextXAlignment = Enum.TextXAlignment.Left,
+		AutoButtonColor = false, ZIndex = 20,
 	})
 	round(searchBtn, 1); stroke(searchBtn, T.line, 1, .7)
 	local sIcon = mk("Frame", {
-		Parent = searchBtn, Size = UDim2.fromOffset(14, 14),
-		Position = UDim2.new(0, 12, .5, 0), AnchorPoint = Vector2.new(0, .5),
+		Parent = searchBtn, Size = UDim2.fromOffset(13, 13),
+		Position = UDim2.new(0, 11, .5, 0), AnchorPoint = Vector2.new(0, .5),
 		BackgroundTransparency = 1, ZIndex = 21,
 	})
-	drawIcon("search", sIcon, T.dim, 14)
-	mk("UIPadding", { Parent = searchBtn, PaddingLeft = UDim.new(0, 32) })
+	drawIcon("search", sIcon, T.dim, 13)
+	mk("UIPadding", { Parent = searchBtn, PaddingLeft = UDim.new(0, 30) })
 	searchBtn.MouseButton1Click:Connect(function() self:_openSearch() end)
 
 	---------------------------------------------------------------- 开 / 关
@@ -1331,7 +1342,7 @@ function Celest.new(cfg)
 	return win
 end
 
-Celest.Version = "1.2.0"
+Celest.Version = "1.3.0"
 Celest.Icons   = ICONS          -- 内置矢量图标表：name -> 绘制函数
 do
 	local names = {}

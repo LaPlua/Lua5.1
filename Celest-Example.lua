@@ -7,8 +7,8 @@ local Celest = loadstring(game:HttpGet(
 ))()
 
 -- 版本守卫：若拿到的是旧缓存，直接在控制台报警，避免「改了没生效」的错觉
-if Celest.Version ~= "1.2.0" then
-	warn("[Celest] 实际加载到 " .. tostring(Celest.Version) .. "，期望 1.2.0 → 请重启执行器清 HttpGet 缓存")
+if Celest.Version ~= "1.3.0" then
+	warn("[Celest] 实际加载到 " .. tostring(Celest.Version) .. "，期望 1.3.0 → 请重启执行器清 HttpGet 缓存")
 end
 
 --==============================================================================
