@@ -16,6 +16,7 @@ end
 
 local win = Celest.new({ title = "星 穹", subtitle = "T" })
 local c1 = win:Category("测试", "✦")
+local c2 = win:Category("切换", "◇")
 local onN, offN = 0, 0
 local t1 = c1:Toggle("开关A", false, function(on)
 	if on then onN = onN + 1 else offN = offN + 1 end
@@ -43,8 +44,9 @@ if onN ~= 1 then __ERR[#__ERR + 1] = "开回调应触发 1 次，实际 " .. tos
 local bk = blankBtn()
 __REPORT[#__REPORT + 1] = "空白按钮存在=" .. tostring(bk ~= nil)
 if bk then
-	try("click-blank", function() bk.MouseButton1Click:Fire(); __drain(600) end)
+	try("click-blank", function() for _ = 1, 3 do bk.MouseButton1Click:Fire() end; __drain(600) end)
 end
+__REPORT[#__REPORT + 1] = "连点空白3次后 value=" .. tostring(t1.value) .. " off回调=" .. tostring(offN) .. " mapOpen=" .. tostring(win.mapOpen)
 if t1.value ~= true then __ERR[#__ERR + 1] = "点空白后开关被改了：value=" .. tostring(t1.value) end
 if offN ~= 0 then __ERR[#__ERR + 1] = "点空白误触了关回调 " .. tostring(offN) .. " 次" end
 if not win.mapOpen then __ERR[#__ERR + 1] = "点空白把星图关了" end
@@ -59,6 +61,14 @@ if offN ~= 0 then __ERR[#__ERR + 1] = "关闭主界面触发了关回调 " .. to
 try("reopen", function() win:Open(); __drain(1500) end)
 __REPORT[#__REPORT + 1] = "重开后 value=" .. tostring(t1.value)
 if t1.value ~= true then __ERR[#__ERR + 1] = "重开后开关状态丢失" end
+
+-- 5.5) 切分类往返 → 状态仍在
+try("switch-cat", function()
+	win:Select("切换"); __drain(1500)
+	win:Select("测试"); __drain(1500)
+end)
+__REPORT[#__REPORT + 1] = "切分类往返后 value=" .. tostring(t1.value)
+if t1.value ~= true then __ERR[#__ERR + 1] = "切分类往返后开关状态丢失" end
 
 -- 6) 再点功能星 → 才应关
 try("click-star-again", function() starBtn(t1).MouseButton1Click:Fire() end)
