@@ -662,23 +662,31 @@ function Celest:_build()
 			local on  = (opt == item.value)
 			local b = mk("TextButton", {
 				Parent = box, Size = UDim2.new(1, 0, 0, rowH), LayoutOrder = i,
-				BackgroundTransparency = 1, AutoButtonColor = false,
+				BackgroundTransparency = 1, AutoButtonColor = false, Text = "", ZIndex = 61,
+			})
+			-- 横向排布：竖线标记 + 文字，由布局器分配间距，绝不重叠
+			mk("UIListLayout", {
+				Parent = b, FillDirection = Enum.FillDirection.Horizontal,
+				VerticalAlignment = Enum.VerticalAlignment.Center,
+				SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 8),
+			})
+			mk("UIPadding", { Parent = b, PaddingLeft = UDim.new(0, 10) })
+			local mark = mk("Frame", {
+				Parent = b, Size = UDim2.fromOffset(3, 12), LayoutOrder = 1,
+				BackgroundColor3 = T.accent, BackgroundTransparency = on and .05 or 1,
+				BorderSizePixel = 0, ZIndex = 61,
+			})
+			round(mark, 1)
+			local label = mk("TextLabel", {
+				Parent = b, Size = UDim2.fromOffset(w - 21, rowH), LayoutOrder = 2,
+				BackgroundTransparency = 1,
 				Font = Enum.Font.Gotham, TextSize = 13, Text = txt,
 				TextColor3 = on and T.star or T.dim, TextTransparency = on and .02 or .34,
 				TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 61,
 			})
-			mk("UIPadding", { Parent = b, PaddingLeft = UDim.new(0, 22) })
-			if on then
-				local mark = mk("Frame", {
-					Parent = b, Size = UDim2.fromOffset(3, 12),
-					Position = UDim2.new(0, 10, .5, 0), AnchorPoint = Vector2.new(0, .5),
-					BackgroundColor3 = T.accent, BackgroundTransparency = .05, BorderSizePixel = 0, ZIndex = 61,
-				})
-				round(mark, 1)
-			end
-			b.MouseEnter:Connect(function() tw(b, .12, { TextColor3 = T.star, TextTransparency = .03 }) end)
+			b.MouseEnter:Connect(function() tw(label, .12, { TextColor3 = T.star, TextTransparency = .03 }) end)
 			b.MouseLeave:Connect(function()
-				if opt ~= item.value then tw(b, .12, { TextColor3 = T.dim, TextTransparency = .34 }) end
+				if opt ~= item.value then tw(label, .12, { TextColor3 = T.dim, TextTransparency = .34 }) end
 			end)
 			b.MouseButton1Click:Connect(function()
 				item.value = opt
