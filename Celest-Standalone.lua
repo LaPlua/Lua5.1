@@ -224,13 +224,25 @@ local veil = mk("Frame", {
 	BorderSizePixel = 0, ZIndex = 9,
 })
 
----------------------------------------------------------------- 星图容器（多环：一圈一类，全部同时可见）
--- 半径按「单类最多功能数」自适应，功能多也不会挤在一起
-local maxN = 1
-for _, c in ipairs(DATA) do if #c.stars > maxN then maxN = #c.stars end end
-local RING, R0, STEP_R = {}, math.max(210, 20 * maxN), math.max(100, math.floor(math.max(210, 20 * maxN) * 0.52))
-for i = 1, #DATA do RING[i] = R0 + (i - 1) * STEP_R end
-local R_OUT = RING[#RING]
+---------------------------------------------------------------- 星图容器（一圈一类；功能多则自动多开几环）
+-- 每环最多容纳 PER_RING 个功能，某类功能超出就自动顺延到下一环
+local PER_RING = 8
+local SEG = {}
+for ci, cat in ipairs(DATA) do
+	local n     = #cat.stars
+	local parts = math.max(1, math.ceil(n / PER_RING))
+	for p = 1, parts do
+		local seg = {}
+		for k = (p - 1) * PER_RING + 1, math.min(p * PER_RING, n) do
+			seg[#seg + 1] = cat.stars[k]
+		end
+		SEG[#SEG + 1] = { ci = ci, part = p, parts = parts, seg = seg }
+	end
+end
+local R0, STEP_R = 210, 118
+local R = {}
+for i = 1, #SEG do R[i] = R0 + (i - 1) * STEP_R end
+local R_OUT = R[#R]
 local REF = math.ceil((R_OUT + 90) * 2 / 10) * 10
 
 local map = mk("CanvasGroup", {
@@ -254,8 +266,8 @@ end
 ---------------------------------------------------------------- 环 / 刻度 / 星核
 local ringLayer = mk("Frame", { Parent = map, Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, ZIndex = 1 })
 do
-	for i = 1, #RING do
-		local rg = ring(RING[i] * 2, T.line, i == #RING and .88 or .93)
+	for i = 1, #R do
+		local rg = ring(R[i] * 2, T.line, i == #R and .88 or .93)
 		rg.Parent = ringLayer
 	end
 	local ticks = mk("Frame", { Parent = ringLayer, Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1 })
@@ -477,34 +489,38 @@ local function makeStar(cat, star, r, deg)
 	return node
 end
 
----------------------------------------------------------------- 分类名（各环正上方）
+---------------------------------------------------------------- 分类名（各环正上方；跨环时标注 ·2 ·3）
 local function buildLabels()
-	for i, cat in ipairs(DATA) do
+	for i, s in ipairs(SEG) do
+		local cat = DATA[s.ci]
+		local txt = cat.glyph .. "  " .. cat.name
+		if s.parts > 1 then txt = txt .. " · " .. s.part end
 		local pill = mk("Frame", {
-			Parent = nodeLayer, Size = UDim2.fromOffset(100, 22),
+			Parent = nodeLayer, Size = UDim2.fromOffset(108, 22),
 			BackgroundColor3 = T.panel, BackgroundTransparency = .38,
 			BorderSizePixel = 0, ZIndex = 5,
 		})
 		round(pill, 1)
 		stroke(pill, T.line, 1, .7)
-		placeOn(pill, RING[i], -90)
+		placeOn(pill, R[i], -90)
 		mk("TextLabel", {
 			Parent = pill, BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1),
 			Font = Enum.Font.Gotham, TextSize = 12,
 			TextColor3 = T.star, TextTransparency = .12,
-			Text = cat.glyph .. "  " .. cat.name, ZIndex = 6,
+			Text = txt, ZIndex = 6,
 		})
 	end
 end
 
 ---------------------------------------------------------------- 全部功能星（所有环同时显示）
 local function buildStars()
-	for i, cat in ipairs(DATA) do
-		local n    = #cat.stars
+	for i, s in ipairs(SEG) do
+		local cat  = DATA[s.ci]
+		local n    = #s.seg
 		local step = 360 / n
-		for j, s in ipairs(cat.stars) do
+		for j, st in ipairs(s.seg) do
 			-- 顶部留出分类名位置 → 从半格偏移开始排
-			makeStar(cat, s, RING[i], -90 + step / 2 + (j - 1) * step)
+			makeStar(cat, st, R[i], -90 + step / 2 + (j - 1) * step)
 		end
 	end
 end
