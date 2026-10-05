@@ -1,7 +1,7 @@
 --[[
     星 穹 · C E L E S T   —— 独立示例（不依赖任何 UI 库）
     ---------------------------------------------------------------
-    深空冷紫 / 无窗体 / 双层星域 / 电脑 + 手机
+    深空冷紫 / 无窗体 / 多环星图（一圈一类，全部同时可见）/ 电脑 + 手机
     · 电脑：按住 ALT 呼出星图，松手归寂
     · 手机：点右下角常驻星点呼出，再点归寂
     · 点功能星 = 亮/灭；选中数值星后拖动 = 调值
@@ -224,9 +224,14 @@ local veil = mk("Frame", {
 	BorderSizePixel = 0, ZIndex = 9,
 })
 
----------------------------------------------------------------- 星图容器
-local REF = 760
-local R_IN, R_OUT, ARC_R = 150, 300, 250
+---------------------------------------------------------------- 星图容器（多环：一圈一类，全部同时可见）
+-- 半径按「单类最多功能数」自适应，功能多也不会挤在一起
+local maxN = 1
+for _, c in ipairs(DATA) do if #c.stars > maxN then maxN = #c.stars end end
+local RING, R0, STEP_R = {}, math.max(210, 20 * maxN), math.max(100, math.floor(math.max(210, 20 * maxN) * 0.52))
+for i = 1, #DATA do RING[i] = R0 + (i - 1) * STEP_R end
+local R_OUT = RING[#RING]
+local REF = math.ceil((R_OUT + 90) * 2 / 10) * 10
 
 local map = mk("CanvasGroup", {
 	Parent = root,
@@ -249,8 +254,10 @@ end
 ---------------------------------------------------------------- 环 / 刻度 / 星核
 local ringLayer = mk("Frame", { Parent = map, Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, ZIndex = 1 })
 do
-	local a = ring(R_IN * 2, T.line, .92);  a.Parent = ringLayer
-	local b = ring(R_OUT * 2, T.line, .90); b.Parent = ringLayer
+	for i = 1, #RING do
+		local rg = ring(RING[i] * 2, T.line, i == #RING and .88 or .93)
+		rg.Parent = ringLayer
+	end
 	local ticks = mk("Frame", { Parent = ringLayer, Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1 })
 	for i = 0, 71 do
 		local deg  = i / 72 * 360
@@ -294,15 +301,14 @@ task.spawn(function()
 	end
 end)
 
--- 分类节点独立一层，永远不被星域的销毁牵连
-local nodeLayer = mk("Frame", { Parent = map, Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, ZIndex = 7 })
+-- 分类名与星点同层，星点 ZIndex 更高
+local nodeLayer = mk("Frame", { Parent = map, Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, ZIndex = 5 })
 
 ---------------------------------------------------------------- 前向声明（必须在使用者之前）
-local paintCategories
-local RebuildStars
 local SelectValue
 local OpenWhisper
 local HUDBus = { Refresh = function() end }
+local STARS, STAR_BY_NAME = {}, {}
 
 ---------------------------------------------------------------- 星点视觉
 local function paintDot(dot, on, sel)
@@ -319,56 +325,21 @@ local function paintDot(dot, on, sel)
 	end
 end
 
----------------------------------------------------------------- 数值弧
-local arcLayer = mk("Frame", { Parent = map, Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Visible = false, ZIndex = 4 })
-local arcDots, knob, arcLabel = {}, nil, nil
-do
-	local N = 40
-	for i = 0, N do
-		local d = circle(arcLayer, 5, T.accent, 1)
-		placeOn(d, ARC_R, -125 + 250 * (i / N))
-		arcDots[i + 1] = d
-	end
-	knob = circle(arcLayer, 9, T.star, 0)
-	arcLabel = mk("TextLabel", {
-		Parent = arcLayer, BackgroundTransparency = 1,
-		Size = UDim2.new(1, 0, 0, 20),
-		Position = UDim2.new(0, 0, .5, 112),
-		Font = Enum.Font.Gotham, TextSize = 12,
-		TextColor3 = T.star, TextTransparency = .12, Text = "",
-	})
-end
-
+---------------------------------------------------------------- 选中高亮
 local selected = nil
 
 -- 拖动状态（必须在 makeStar 之前声明，供星点按钮闭包引用）
 local dragging, dragMoved, dragCtx = false, false, nil
 
-local function paintArc()
-	if not selected then return end
-	local v   = selected.star.v
-	local lit = math.floor(v * (#arcDots - 1) + .5)
-	for i, d in ipairs(arcDots) do
-		local on = (i - 1) <= lit
-		d.BackgroundTransparency = on and 0 or .82
-		d.BackgroundColor3 = on and T.accent or T.dim
-	end
-	placeOn(knob, ARC_R, -125 + 250 * v)
-	arcLabel.Text = selected.star.n .. " · " .. tostring(math.floor(v * 100)) .. "%"
-end
-
-function SelectValue(node, star, dot, val)
+function SelectValue(node, star, dot)
 	if selected and selected.node == node then
 		paintDot(dot, false, false)
 		selected = nil
-		arcLayer.Visible = false
 		return
 	end
 	if selected then paintDot(selected.dot, false, false) end
-	selected = { star = star, node = node, dot = dot, val = val }
+	selected = { star = star, node = node, dot = dot }
 	paintDot(dot, false, true)
-	arcLayer.Visible = true
-	paintArc()
 end
 
 local function clearSelection()
@@ -376,7 +347,6 @@ local function clearSelection()
 		paintDot(selected.dot, false, false)
 		selected = nil
 	end
-	arcLayer.Visible = false
 end
 
 ---------------------------------------------------------------- 拖动（帧同步，稳定可靠）
@@ -386,19 +356,19 @@ local function endDrag()
 	if dragConn then dragConn:Disconnect(); dragConn = nil end
 	-- 按下后没有真正移动 → 视为轻点，切换该数值星的选中状态
 	if dragging and dragCtx and not dragMoved and dragCtx.canToggle then
-		SelectValue(dragCtx.node, dragCtx.star, dragCtx.dot, dragCtx.val)
+		SelectValue(dragCtx.node, dragCtx.star, dragCtx.dot)
 	end
 	dragging, dragMoved, dragCtx = false, false, nil
 end
 
--- noToggle=true 时（在圆弧大热区上按下），原地松手不会取消选中
-local function beginDrag(node, star, dot, val, noToggle)
+-- setV(v)：由数值星提供，负责同时刷新百分比文字与数值条
+-- noToggle=true 时（从大热区按下），原地松手不会取消选中
+local function beginDrag(node, star, dot, setV, noToggle)
 	local wasSel = (selected ~= nil and selected.node == node)
 	dragging, dragMoved = true, false
-	dragCtx = { node = node, star = star, dot = dot, val = val }
-	-- 轻点切换只在「原本已选中且不是从圆弧热区按下」时生效
+	dragCtx = { node = node, star = star, dot = dot, setV = setV }
 	dragCtx.canToggle = (not noToggle) and wasSel
-	if not wasSel then SelectValue(node, star, dot, val) end
+	if not wasSel then SelectValue(node, star, dot) end
 	if dragConn then dragConn:Disconnect(); dragConn = nil end
 	if not TOUCH then
 		-- 电脑：每帧读取鼠标绝对位置，避免 InputChanged 被 GUI 吞掉
@@ -407,75 +377,80 @@ local function beginDrag(node, star, dot, val, noToggle)
 			local dx = UIS:GetMouseLocation().X - baseX
 			if math.abs(dx) < .5 then return end
 			dragMoved = true
-			local v = math.clamp(baseV + dx / 420, 0, 1)
-			star.v = v
-			if val then val.Text = tostring(math.floor(v * 100)) .. "%" end
-			if selected and selected.star == star then paintArc() end
+			dragCtx.setV(math.clamp(baseV + dx / 420, 0, 1))
 		end)
 	end
 end
 
----------------------------------------------------------------- 圆弧大热区
--- 选中数值星后，在圆弧任意位置按住即可拖动（原地松手不会取消选中）
-local arcHit = mk("TextButton", {
-	Parent = arcLayer, Size = UDim2.fromScale(1, 1),
-	BackgroundTransparency = 1, Text = "", AutoButtonColor = false, ZIndex = 5,
-})
-arcHit.MouseButton1Down:Connect(function()
-	if selected then beginDrag(selected.node, selected.star, selected.dot, selected.val, true) end
-end)
-
 ---------------------------------------------------------------- 功能星
-local function makeStar(cat, star, deg)
+local function makeStar(cat, star, r, deg)
 	local node = mk("Frame", {
 		Parent = nodeLayer,
-		Size = UDim2.fromOffset(150, 58),
+		Size = UDim2.fromOffset(114, 88),
 		BackgroundTransparency = 1,
-		ZIndex = 5,
+		ZIndex = 6,
 	})
-	placeOn(node, R_OUT, deg)
+	placeOn(node, r, deg)
 
 	local btn = mk("TextButton", {
 		Parent = node, Size = UDim2.fromScale(1, 1),
-		BackgroundTransparency = 1, Text = "", AutoButtonColor = false, ZIndex = 5,
+		BackgroundTransparency = 1, Text = "", AutoButtonColor = false, ZIndex = 6,
 	})
-	local dot = circle(node, 9, T.star, 1)
-	dot.Position = UDim2.new(.5, 0, 0, 22)
+	local dot = circle(node, 9, T.star, 1)  -- 居中，正好落在环线上
 	dot.ZIndex = 6
 	paintDot(dot, star.t == "toggle" and star.on, false)
 
 	local label = mk("TextLabel", {
 		Parent = node, BackgroundTransparency = 1,
-		Size = UDim2.fromScale(1, 18), Position = UDim2.new(0, 0, 0, 34),
-		Font = Enum.Font.Gotham, TextSize = 13,
+		Size = UDim2.new(1, 0, 0, 16), Position = UDim2.new(.5, 0, .5, 10),
+		AnchorPoint = Vector2.new(.5, 0),
+		Font = Enum.Font.Gotham, TextSize = 12,
 		TextColor3 = T.dim, TextTransparency = .62,
 		Text = star.n, ZIndex = 6,
 	})
 
-	local val
+	local val, setV
 	if star.t == "value" then
 		val = mk("TextLabel", {
 			Parent = node, BackgroundTransparency = 1,
-			Size = UDim2.fromScale(1, 14), Position = UDim2.new(0, 0, 0, 50),
-			Font = Enum.Font.Gotham, TextSize = 11,
-			TextColor3 = T.dim, TextTransparency = .72,
+			Size = UDim2.new(1, 0, 0, 12), Position = UDim2.new(.5, 0, .5, 26),
+			AnchorPoint = Vector2.new(.5, 0),
+			Font = Enum.Font.Gotham, TextSize = 10,
+			TextColor3 = T.dim, TextTransparency = .7,
 			Text = tostring(math.floor(star.v * 100)) .. "%", ZIndex = 6,
 		})
+		local track = mk("Frame", {
+			Parent = node, Size = UDim2.fromOffset(58, 3),
+			Position = UDim2.new(.5, 0, .5, 40), AnchorPoint = Vector2.new(.5, 0),
+			BackgroundColor3 = T.dim, BackgroundTransparency = .72,
+			BorderSizePixel = 0, ZIndex = 6,
+		})
+		round(track, 1)
+		local fill = mk("Frame", {
+			Parent = track, Size = UDim2.fromScale(star.v, 1),
+			BackgroundColor3 = T.accent, BackgroundTransparency = .05,
+			BorderSizePixel = 0, ZIndex = 7,
+		})
+		round(fill, 1)
+		setV = function(v)
+			star.v = v
+			val.Text = tostring(math.floor(v * 100)) .. "%"
+			fill.Size = UDim2.fromScale(v, 1)
+		end
 	end
 
 	local function ripple(bright)
-		local r = circle(node, 9, bright and T.star or T.accent, 1)
-		r.Position = UDim2.new(.5, 0, 0, 22)
-		stroke(r, bright and T.star or T.accent, 1, .2)
-		r.ZIndex = 5
-		tw(r, .9, { Size = UDim2.fromOffset(84, 84) }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
-		local s = r:FindFirstChildOfClass("UIStroke")
+		local rr = circle(node, 9, bright and T.star or T.accent, 1)
+		stroke(rr, bright and T.star or T.accent, 1, .2)
+		rr.ZIndex = 5
+		tw(rr, .9, { Size = UDim2.fromOffset(84, 84) }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+		local s = rr:FindFirstChildOfClass("UIStroke")
 		if s then tw(s, .9, { Transparency = 1 }) end
-		task.delay(.95, function() if r.Parent then r:Destroy() end end)
+		task.delay(.95, function() if rr.Parent then rr:Destroy() end end)
 	end
 
 	local function focus(on)
-		tw(label, .22, { TextColor3 = on and T.star or T.dim, TextTransparency = on and .05 or .62 })
+		tw(label, .22, { TextColor3 = on and T.star or T.dim, TextTransparency = on and .04 or .62 })
 		tw(dot, .22, { Size = UDim2.fromOffset(on and 12 or 9, on and 12 or 9) })
 	end
 	btn.MouseEnter:Connect(function() focus(true) end)
@@ -484,93 +459,54 @@ local function makeStar(cat, star, deg)
 	-- 数值星：按下即选中并进入拖动；原地轻点则开/关选择
 	btn.MouseButton1Down:Connect(function()
 		if star.t ~= "value" then return end
-		beginDrag(node, star, dot, val, false)
+		beginDrag(node, star, dot, setV, false)
 	end)
 
 	btn.MouseButton1Click:Connect(function()
-		if star.t == "toggle" then
-			if star.n == "星象" then OpenWhisper("星象"); return end
-			star.on = not star.on
-			paintDot(dot, star.on, false)
-			ripple(star.on)
-			HUDBus.Refresh()
-		end
+		if star.t ~= "toggle" then return end
+		if star.n == "星象" then OpenWhisper("星象"); return end
+		star.on = not star.on
+		paintDot(dot, star.on, false)
+		ripple(star.on)
+		HUDBus.Refresh()
 	end)
+
+	local entry = { star = star, node = node, dot = dot, setV = setV, cat = cat }
+	STARS[#STARS + 1] = entry
+	STAR_BY_NAME[star.n] = entry
 	return node
 end
 
----------------------------------------------------------------- 内环 · 分类
-local catNodes = {}
-local active = 1
-
-local function buildCategories()
+---------------------------------------------------------------- 分类名（各环正上方）
+local function buildLabels()
 	for i, cat in ipairs(DATA) do
-		local node = mk("Frame", {
-			Parent = nodeLayer, Size = UDim2.fromOffset(46, 46),
-			BackgroundTransparency = 1, ZIndex = 5,
+		local pill = mk("Frame", {
+			Parent = nodeLayer, Size = UDim2.fromOffset(100, 22),
+			BackgroundColor3 = T.panel, BackgroundTransparency = .38,
+			BorderSizePixel = 0, ZIndex = 5,
 		})
-		placeOn(node, R_IN, -90 + (i - 1) * (360 / #DATA))
-
-		local btn = mk("TextButton", {
-			Parent = node, Size = UDim2.fromScale(1, 1),
-			BackgroundColor3 = T.panel, BackgroundTransparency = .5,
-			Text = cat.glyph, Font = Enum.Font.Gotham, TextSize = 15,
-			TextColor3 = T.dim, TextTransparency = .35,
-			AutoButtonColor = false, ZIndex = 5,
+		round(pill, 1)
+		stroke(pill, T.line, 1, .7)
+		placeOn(pill, RING[i], -90)
+		mk("TextLabel", {
+			Parent = pill, BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1),
+			Font = Enum.Font.Gotham, TextSize = 12,
+			TextColor3 = T.star, TextTransparency = .12,
+			Text = cat.glyph .. "  " .. cat.name, ZIndex = 6,
 		})
-		round(btn, 1)
-		local st = stroke(btn, T.line, 1, .68)
-
-		local name = mk("TextLabel", {
-			Parent = node, BackgroundTransparency = 1,
-			Size = UDim2.fromOffset(120, 16),
-			Position = UDim2.new(.5, 0, 1, 12), AnchorPoint = Vector2.new(.5, 0),
-			Font = Enum.Font.Gotham, TextSize = 13,
-			TextColor3 = T.dim, TextTransparency = .7, Text = cat.name, ZIndex = 6,
-		})
-
-		btn.MouseButton1Click:Connect(function()
-			if active == i then return end
-			active = i
-			clearSelection()
-			RebuildStars()
-			paintCategories()
-		end)
-
-		catNodes[i] = { node = node, btn = btn, st = st, name = name }
 	end
 end
 
-function paintCategories()
-	for i, c in ipairs(catNodes) do
-		local sel = (i == active)
-		tw(c.btn, .24, {
-			TextColor3 = sel and T.star or T.dim,
-			TextTransparency = sel and 0 or .35,
-			BackgroundTransparency = sel and .12 or .5,
-		})
-		tw(c.st, .24, { Transparency = sel and .22 or .68 })
-		tw(c.name, .24, { TextTransparency = sel and .05 or .7 })
+---------------------------------------------------------------- 全部功能星（所有环同时显示）
+local function buildStars()
+	for i, cat in ipairs(DATA) do
+		local n    = #cat.stars
+		local step = 360 / n
+		for j, s in ipairs(cat.stars) do
+			-- 顶部留出分类名位置 → 从半格偏移开始排
+			makeStar(cat, s, RING[i], -90 + step / 2 + (j - 1) * step)
+		end
 	end
-end
-
----------------------------------------------------------------- 外环 · 功能星（可整体淡入）
-local starLayer
-
-function RebuildStars()
-	if starLayer then starLayer:Destroy() end
-	starLayer = mk("CanvasGroup", {
-		Parent = map, Size = UDim2.fromScale(1, 1),
-		BackgroundTransparency = 1, GroupTransparency = 1, ZIndex = 6,
-	})
-
-	local cat = DATA[active]
-	local n = #cat.stars
-	for i, s in ipairs(cat.stars) do
-		local node = makeStar(cat, s, -90 + (i - 1) * (360 / n) + (360 / n) / 2)
-		node.Parent = starLayer
-	end
-	tw(starLayer, .38, { GroupTransparency = 0 })
 end
 
 ---------------------------------------------------------------- 星痕（右上）
@@ -668,7 +604,6 @@ local function OpenMap()
 	map.Visible = true
 	tw(veil, .42, { BackgroundTransparency = .18 })
 	tw(map, .42, { GroupTransparency = 0 })
-	paintCategories()
 end
 
 local function CloseMap()
@@ -768,11 +703,15 @@ local function renderRes()
 		b.MouseEnter:Connect(function() tw(b, .15, { TextColor3 = T.star, TextTransparency = .05 }) end)
 		b.MouseLeave:Connect(function() tw(b, .15, { TextColor3 = T.dim, TextTransparency = .35 }) end)
 		b.MouseButton1Click:Connect(function()
-			if active ~= r.ci then
-				active = r.ci
-				clearSelection()
-				RebuildStars()
-				paintCategories()
+			local e = STAR_BY_NAME[r.s.n]
+			if e then
+				if e.star.t == "toggle" then
+					e.star.on = not e.star.on
+					paintDot(e.dot, e.star.on, false)
+					HUDBus.Refresh()
+				elseif e.setV then
+					SelectValue(e.node, e.star, e.dot)
+				end
 			end
 			closeWhisper()
 		end)
@@ -815,11 +754,7 @@ UIS.InputChanged:Connect(function(input)
 		local dx = input.Delta.X
 		if dx == 0 then return end
 		dragMoved = true
-		local star = dragCtx.star
-		local v = math.clamp(star.v + dx / 420, 0, 1)
-		star.v = v
-		if dragCtx.val then dragCtx.val.Text = tostring(math.floor(v * 100)) .. "%" end
-		if selected and selected.star == star then paintArc() end
+		dragCtx.setV(math.clamp(dragCtx.star.v + dx / 420, 0, 1))
 	end
 end)
 
@@ -828,7 +763,7 @@ local function resize()
 	local vp = Vector2.new(1280, 720)
 	local cam = workspace.CurrentCamera
 	if cam then vp = cam.ViewportSize end
-	mapScale.Scale = math.clamp(math.min(vp.X, vp.Y) / REF * (TOUCH and 1.14 or 1.10), .58, 1.38)
+	mapScale.Scale = math.clamp(math.min(vp.X, vp.Y) / REF * (TOUCH and 1.06 or 1.02), .3, 1.15)
 end
 resize()
 if workspace.CurrentCamera then
@@ -865,9 +800,8 @@ local function gather()
 end
 
 ---------------------------------------------------------------- 启动
-buildCategories()
-RebuildStars()
-paintCategories()
+buildLabels()
+buildStars()
 HUDBus.Refresh()
 gather()
 
