@@ -164,7 +164,7 @@ local function fmtNum(v, step)
 		return string.format("%d", math.floor(v + 0.5))
 	end
 	local s = string.format("%.2f", v)
-	s = string:gsub("%.?0+$", "")  -- 去掉尾部多余的 0
+	s = s:gsub("%.?0+$", "")  -- 去掉尾部多余的 0
 	if s == "" or s == "-" then s = "0" end
 	return s
 end
@@ -1356,7 +1356,7 @@ function Section:Slider(cfg)
 		AnchorPoint = Vector2.new(0.5, 1), ZIndex = 22, Visible = false, Parent = host,
 	})
 	corner(bubble, 6)
-	create("TextLabel", {
+	local bubbleTxt = create("TextLabel", {
 		Name = "B", BackgroundTransparency = 1, Text = "",
 		Font = Enum.Font.GothamBold, TextSize = 11, TextColor3 = T.Ink,
 		Size = UDim2.fromScale(1, 1), ZIndex = 23, Parent = bubble,
@@ -1380,7 +1380,7 @@ function Section:Slider(cfg)
 		end
 		local txt = (cfg.Format and cfg.Format(val)) or (fmtNum(val, step) .. (cfg.Suffix or ""))
 		valLb.Text = txt
-		bubble.B.Text = txt
+		bubbleTxt.Text = txt
 		bubble.Position = UDim2.new(t, 0, 0, -14)
 	end
 	paint(false)
@@ -3528,7 +3528,8 @@ buildConsole = function(lib)
 	end
 
 	local history, hIdx = {}, 1
-	local env = setmetatable({}, {
+	local env
+	env = setmetatable({}, {
 		__index = _G,
 		__newindex = function(_, k, v) rawset(env, k, v); pcall(function() GLOB[k] = v end) end,
 	})
