@@ -45,7 +45,7 @@ move:Slider("滞空时间", 0, 100, 20, function(v) end)
 
 ---------------------------------------------------------------- 律令
 local sys = win:Category("律令", "gear")
-sys:Toggle("低语面板", true, function(on) end)
+sys:Toggle("搜索面板", true, function(on) end)
 sys:Slider("星痕上限", 1, 10, 6, function(v) end)
-sys:Button("展开低语搜索", function() win:Search() end)
+sys:Button("展开搜索", function() win:Search() end)
 sys:Button("关闭星图", function() win:Close() end)

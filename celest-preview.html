@@ -178,7 +178,7 @@
     animation:pulse 6s ease-in-out infinite}
   .sigil:hover i{background:#fff}
 
-  /* ---------- 低语面板 ---------- */
+  /* ---------- 搜索面板 ---------- */
   .whisper{position:absolute;left:50%;bottom:12vh;z-index:9;transform:translateX(-50%) translateY(14px);
     width:min(560px,88vw);opacity:0;pointer-events:none;transition:.28s cubic-bezier(.2,.7,.3,1)}
   .whisper.show{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto}
@@ -275,11 +275,11 @@
     <em>开关</em>星亮灭 · <em>数值</em>星拖弧调值 · <em>下拉</em>星展列表 · <em>▸</em>星点一次执行
   </div>
 
-  <div class="whisper-hint" id="whisperHint">CTRL + K · 低语</div>
+  <div class="whisper-hint" id="whisperHint">CTRL + K · 搜索</div>
 
   <div class="whisper" id="whisper">
     <div class="box">
-      <input id="wq" placeholder="低语一个名字…" autocomplete="off" spellcheck="false">
+      <input id="wq" placeholder="搜索一个名字…" autocomplete="off" spellcheck="false">
       <div class="res" id="wres"></div>
     </div>
   </div>
@@ -328,7 +328,7 @@
     ]},
     { id:'order', glyph:'⊙', name:'律令', stars:[
       { n:'星象',     t:'toggle', on:false },  /* 仅接口，未实现 */
-      { n:'低语面板', t:'toggle', on:true  },
+      { n:'搜索面板', t:'toggle', on:true  },
       { n:'星痕常显', t:'toggle', on:true  },
       { n:'星痕显名', t:'toggle', on:true  },
       { n:'归寂延时', t:'value',  v:0.30   },
@@ -592,7 +592,7 @@
   function activeList(){
     const out = [];
     DATA.forEach(c=>c.stars.forEach(s=>{
-      if(s.t==='toggle' && s.on && s.n!=='星象' && s.n!=='星痕常显' && s.n!=='星痕显名' && s.n!=='低语面板') out.push(s.n);
+      if(s.t==='toggle' && s.on && s.n!=='星象' && s.n!=='星痕常显' && s.n!=='星痕显名' && s.n!=='搜索面板') out.push(s.n);
     }));
     return out;
   }
@@ -640,7 +640,7 @@
     if(selStar) hideArc();
   });
 
-  /* ---------------- 低语 ---------------- */
+  /* ---------------- 搜索 ---------------- */
   const whisper = document.getElementById('whisper');
   const wq = document.getElementById('wq');
   const wres = document.getElementById('wres');
@@ -667,7 +667,7 @@
 
   wq.addEventListener('input', renderRes);
   wq.addEventListener('keydown', (e)=>{
-    if(e.key==='Escape'){ e.stopPropagation(); whisperClose(); return; }   /* 只关低语，别连星图一起关 */
+    if(e.key==='Escape'){ e.stopPropagation(); whisperClose(); return; }   /* 只关搜索，别连星图一起关 */
     if(e.key==='ArrowDown' || e.key==='ArrowUp'){
       e.preventDefault();
       if(!wItems.length) return;

@@ -15,7 +15,7 @@
 		cat:Button("执行一次", function() print("bang") end)
 
 	操作：
-		· 电脑：按 ALT 呼出星图，再按归寂；CTRL + K 低语搜索
+		· 电脑：按 ALT 呼出星图，再按归寂；CTRL + K 搜索
 		· 手机：点右下角常驻星点呼出，再点归寂
 		· 内环星点 = 选分类；功能星 = 开关；数值星拖动调值；
 		  下拉星展开选择；带箭头的星点一次执行；点空白只取消选中，绝不丢状态
@@ -957,7 +957,7 @@ function Celest:_build()
 		end)
 	end
 
-	---------------------------------------------------------------- 低语面板（搜索全部功能）
+	---------------------------------------------------------------- 搜索面板（搜索全部功能）
 	local whisper = mk("Frame", {
 		Parent = root, Size = UDim2.fromOffset(580, 300),
 		Position = UDim2.new(.5, 0, 1, -26), AnchorPoint = Vector2.new(.5, 1),
@@ -984,7 +984,7 @@ function Celest:_build()
 		Parent = wbox, Size = UDim2.new(1, -28, 0, 30), Position = UDim2.new(0, 28, 0, 0),
 		BackgroundTransparency = 1,
 		Font = Enum.Font.Gotham, TextSize = 15, TextColor3 = T.star, TextTransparency = .05,
-		PlaceholderText = "低语一个名字…", PlaceholderColor3 = T.dim,
+		PlaceholderText = "搜索一个名字…", PlaceholderColor3 = T.dim,
 		Text = "", ClearTextOnFocus = false, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 41,
 	})
 	mk("Frame", {
@@ -1173,7 +1173,7 @@ function Celest:_build()
 		Font = Enum.Font.Gotham, TextSize = 11, TextColor3 = T.dim, TextTransparency = .62,
 		Text = cfg.hint or (TOUCH
 			and "点右下星点呼出 · 再点归寂\n点星点亮灭 · 数值星拖动调值 · 下拉星选择"
-			or  "按 ALT 呼出 / 再按归寂\n点星点亮灭 · 数值星拖动调值 · 下拉星选择 · CTRL+K 低语"),
+			or  "按 ALT 呼出 / 再按归寂\n点星点亮灭 · 数值星拖动调值 · 下拉星选择 · CTRL+K 搜索"),
 		TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 20,
 	})
 	-- 搜索入口（仅开环时出现）
@@ -1181,18 +1181,27 @@ function Celest:_build()
 		Parent = brand, Size = UDim2.fromOffset(92, 26),
 		Position = UDim2.new(0, 34, 0, 82),
 		BackgroundColor3 = T.panel, BackgroundTransparency = .5,
-		Font = Enum.Font.Gotham, TextSize = 12, TextColor3 = T.dim, TextTransparency = .3,
-		Text = "低语", TextXAlignment = Enum.TextXAlignment.Left,
-		AutoButtonColor = false, ZIndex = 20,
+		Text = "", AutoButtonColor = false, ZIndex = 20,
 	})
 	round(searchBtn, 1); stroke(searchBtn, T.line, 1, .7)
+	-- 横向排布：放大镜图标 + 文字，由布局器分配间距，绝不重叠
+	mk("UIListLayout", {
+		Parent = searchBtn, FillDirection = Enum.FillDirection.Horizontal,
+		VerticalAlignment = Enum.VerticalAlignment.Center,
+		SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 7),
+	})
+	mk("UIPadding", { Parent = searchBtn, PaddingLeft = UDim.new(0, 11) })
 	local sIcon = mk("Frame", {
-		Parent = searchBtn, Size = UDim2.fromOffset(13, 13),
-		Position = UDim2.new(0, 11, .5, 0), AnchorPoint = Vector2.new(0, .5),
+		Parent = searchBtn, Size = UDim2.fromOffset(13, 13), LayoutOrder = 1,
 		BackgroundTransparency = 1, ZIndex = 21,
 	})
 	drawIcon("search", sIcon, T.dim, 13)
-	mk("UIPadding", { Parent = searchBtn, PaddingLeft = UDim.new(0, 30) })
+	mk("TextLabel", {
+		Parent = searchBtn, Size = UDim2.fromOffset(48, 26), LayoutOrder = 2,
+		BackgroundTransparency = 1, Font = Enum.Font.Gotham, TextSize = 12,
+		TextColor3 = T.dim, TextTransparency = .3, Text = "搜索",
+		TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 21,
+	})
 	searchBtn.MouseButton1Click:Connect(function() self:_openSearch() end)
 
 	---------------------------------------------------------------- 开 / 关
@@ -1257,7 +1266,7 @@ function Celest:_build()
 	UIS.InputBegan:Connect(function(input)
 		local k = input.KeyCode
 		if whisper.Visible then
-			-- 低语面板打开时，方向键 / 回车用于选择与执行
+			-- 搜索面板打开时，方向键 / 回车用于选择与执行
 			if k == Enum.KeyCode.Up or k == Enum.KeyCode.W then wMove(-1); return end
 			if k == Enum.KeyCode.Down or k == Enum.KeyCode.S then wMove(1); return end
 			if k == Enum.KeyCode.Return or k == Enum.KeyCode.KeypadEnter then wRun(); return end

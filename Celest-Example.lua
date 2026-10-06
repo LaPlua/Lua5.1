@@ -115,7 +115,7 @@ move:Toggle("二段跃", false, function(on) print("[行止] 二段跃 ->", on) 
 move:Slider("速度倍率", 1, 20, 4,   function(v) print("[行止] 速度倍率 ->", v) end)
 move:Slider("滞空时间", 0, 100, 20, function(v) print("[行止] 滞空时间 ->", v) end)
 
-system:Toggle("低语面板", true, function(on) print("[律令] 低语面板 ->", on) end)
+system:Toggle("搜索面板", true, function(on) print("[律令] 搜索面板 ->", on) end)
 system:Slider("星痕上限", 1, 10, 6, function(v) print("[律令] 星痕上限 ->", v) end)
 
 --==============================================================================
@@ -123,10 +123,10 @@ system:Slider("星痕上限", 1, 10, 6, function(v) print("[律令] 星痕上限
 --   win:Open()          展开星图
 --   win:Close()         收合星图（右下角常驻星点仍在）
 --   win:Select(name)    按分类名切换
---   win:Search(prefill) 打开「低语」搜索（可预填关键字）
+--   win:Search(prefill) 打开「搜索」搜索（可预填关键字）
 --   win:Destroy()       销毁整个 UI
 --==============================================================================
-system:Button("展开低语搜索", function() win:Search() end)
+system:Button("展开搜索", function() win:Search() end)
 system:Button("切到「观照」", function() win:Select("观照") end)
 system:Button("关闭星图",     function() win:Close() end)
 
@@ -134,7 +134,7 @@ system:Button("关闭星图",     function() win:Close() end)
 -- 10. 默认展开一次（Celest 无 StartOpen，需要就手动调用）
 --    电脑按 ALT 呼出 / 再按归寂；手机点右下角常驻星点
 --==============================================================================
-print("Celest", Celest.Version, "已加载：按 ALT 呼出/再按归寂 · CTRL+K 低语 · 手机点右下星点")
+print("Celest", Celest.Version, "已加载：按 ALT 呼出/再按归寂 · CTRL+K 搜索 · 手机点右下星点")
 
 win:Open()
 

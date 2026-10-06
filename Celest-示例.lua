@@ -1,6 +1,6 @@
 --==============================================================================
 -- 星穹 Celest · 最简示例（复制 → 直接运行）
---   电脑：ALT 呼出 / 再按归寂 · CTRL+K 低语 · 手机：点右下角常驻星点
+--   电脑：ALT 呼出 / 再按归寂 · CTRL+K 搜索 · 手机：点右下角常驻星点
 --   想完全离线跑：把下面「加载库」那几行换成 Celest-Standalone.lua 的内容即可
 --==============================================================================
 
@@ -59,11 +59,11 @@ end)
 --    win:Open()          展开星图
 --    win:Close()         收合星图（右下角常驻星点仍在）
 --    win:Select(name)    按分类名切换
---    win:Search(prefill) 打开「低语」搜索
+--    win:Search(prefill) 打开「搜索」搜索
 --    win:Destroy()       销毁 UI
-combat:Button("打开低语搜索", function() win:Search() end)
+combat:Button("打开搜索", function() win:Search() end)
 combat:Button("关闭星图", function() win:Close() end)
 
 ---------------------------------------------------------------- 启动
-print("Celest", Celest.Version, "已加载：ALT 呼出/再按归寂 · CTRL+K 低语 · 手机点右下星点")
+print("Celest", Celest.Version, "已加载：ALT 呼出/再按归寂 · CTRL+K 搜索 · 手机点右下星点")
 win:Open()

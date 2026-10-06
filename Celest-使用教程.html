@@ -84,7 +84,7 @@
   <div class="sub">Celest · 无窗体星图 UI 库</div>
   <div class="ver">v1.2 · 电脑 + 手机通用</div>
   <p class="lead">不依赖任何 UI 库。内环星点选分类，外环出该分类的功能星；某类功能多则自动多开几环。<br>
-  本版要点：<span class="ok">开关点空白不再丢失</span> · 内置纯矢量图标（不依赖字体） · <span class="ok">新增下拉框 / 按钮</span> · 低语搜索支持键盘操作。</p>
+  本版要点：<span class="ok">开关点空白不再丢失</span> · 内置纯矢量图标（不依赖字体） · <span class="ok">新增下拉框 / 按钮</span> · 搜索支持键盘操作。</p>
 </header>
 
 <nav class="toc">
@@ -109,7 +109,7 @@
   <tr><td><code>Celest-Example.lua</code></td><td>完整注释示例，从远程加载库本体（推荐照着改）</td></tr>
   <tr><td><code>Celest-Demo.lua</code></td><td>从远程加载库 + 演示界面，运行即可看到效果</td></tr>
   <tr><td><code>Celest-Standalone.lua</code></td><td>独立单文件版：库本体内联，<b>粘进执行器即可运行，无需联网</b></td></tr>
-  <tr><td><code>celest-preview.html</code></td><td>浏览器里直接点着玩的交互预览（试开关、下拉、按钮、低语手感）</td></tr>
+  <tr><td><code>celest-preview.html</code></td><td>浏览器里直接点着玩的交互预览（试开关、下拉、按钮、搜索手感）</td></tr>
 </table>
 
 <h3><span class="tag">A</span>远程加载库（推荐）</h3>
@@ -145,7 +145,7 @@ combat:Button("执行一次", function() print("bang") end)</code></pre>
   <tr><td>调数值</td><td>先单击选中数值星，再按住左右拖动</td><td>选中后按住左右拖</td></tr>
   <tr><td><b>下拉选择</b></td><td>点下拉星展开列表 → 点其中一项</td><td>同左</td></tr>
   <tr><td><b>一次执行</b></td><td>点带箭头的按钮星（点一下执行一次）</td><td>同左</td></tr>
-  <tr><td>搜索</td><td><code>CTRL</code> + <code>K</code> 打开「低语」；或点左上「低语」按钮</td><td>点左上「低语」按钮</td></tr>
+  <tr><td>搜索</td><td><code>CTRL</code> + <code>K</code> 打开「搜索」；或点左上「搜索」按钮</td><td>点左上「搜索」按钮</td></tr>
   <tr><td>搜索面板内</td><td><code>↑</code> <code>↓</code>（或 <code>W</code> <code>S</code>）选择 · <code>Enter</code> 执行 · <code>ESC</code> 关闭</td><td>直接点结果</td></tr>
   <tr><td>取消选中 / 收起下拉</td><td>点空白处；<b>不会关闭星图，也不会改变开关状态</b></td><td>点空白处</td></tr>
 </table>
@@ -272,7 +272,7 @@ end)</code></pre>
   <tr><th>方法</th><th>说明</th></tr>
   <tr><td><code>win:Open()</code></td><td>展开星图</td></tr>
   <tr><td><code>win:Close()</code></td><td>收合星图（右下角常驻星点仍在）</td></tr>
-  <tr><td><code>win:Search(prefill)</code></td><td>打开「低语」搜索面板，可预填关键字</td></tr>
+  <tr><td><code>win:Search(prefill)</code></td><td>打开「搜索」搜索面板，可预填关键字</td></tr>
   <tr><td><code>win:Select(name)</code></td><td>按分类名切换当前分类</td></tr>
   <tr><td><code>win:Destroy()</code></td><td>销毁整个 UI 并断开连接</td></tr>
 </table>
@@ -282,8 +282,8 @@ win:Select("观照")                    -- 切到「观照」分类
 win:Search("描边")                    -- 打开搜索并预填「描边」
 task.delay(3, function() win:Close() end)</code></pre>
 
-<h3><span class="tag">8.1</span>低语搜索面板</h3>
-<p>打开方式：<code>CTRL</code> + <code>K</code>，或点左上角「低语」按钮；也可 <code>win:Search(prefill)</code> 预填关键字。</p>
+<h3><span class="tag">8.1</span>搜索面板</h3>
+<p>打开方式：<code>CTRL</code> + <code>K</code>，或点左上角「搜索」按钮；也可 <code>win:Search(prefill)</code> 预填关键字。</p>
 <ul>
   <li><b>搜索范围</b>：全部分类的所有功能名 + 分类名，输入即时过滤；</li>
   <li><b>结果列表</b>：可滚动，每行左侧是类型图标，中间功能名，右侧「所属分类 · 当前状态」；</li>
@@ -333,8 +333,8 @@ task.delay(3, function() win:Close() end)</code></pre>
 <div class="faq"><b>Q：怎么加下拉框和「点一次就执行」的按钮？</b>
 <pre><code>cat:Dropdown("作战模式", { "平衡", "激进", "潜行" }, "平衡", function(v) print(v) end)
 cat:Button("执行一次", function() print("bang") end)</code></pre>
-<p>下拉星点开列表选择；按钮星点一下执行一次。也可以在「低语」搜索里直接搜到并执行。</p></div>
-<div class="faq"><b>Q：低语搜索好用吗？支持键盘吗？</b><p>支持。<code>CTRL + K</code> 打开后，<code>↑</code> <code>↓</code> 选择、<code>Enter</code> 执行、<code>ESC</code> 关闭；结果可滚动，并显示每项的类型与当前状态。详见 8.1。</p></div>
+<p>下拉星点开列表选择；按钮星点一下执行一次。也可以在「搜索」搜索里直接搜到并执行。</p></div>
+<div class="faq"><b>Q：搜索好用吗？支持键盘吗？</b><p>支持。<code>CTRL + K</code> 打开后，<code>↑</code> <code>↓</code> 选择、<code>Enter</code> 执行、<code>ESC</code> 关闭；结果可滚动，并显示每项的类型与当前状态。详见 8.1。</p></div>
 <div class="faq"><b>Q：想彻底移除 UI？</b><p><code>win:Destroy()</code></p></div>
 
 <footer>星穹 CELEST · v1.2 · 数据层 + 星图 UI 两层结构，建窗与加控件即时生效，无需手动「提交」</footer>
