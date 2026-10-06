@@ -342,9 +342,11 @@ end
 
 -- 圆环分段参数（环距已在原示例基础上收紧）
 local PER_RING = 8
-local R_IN     = 172
-local R_FIRST  = 286
+local R_IN     = 136
+local R_FIRST  = 248
 local STEP_R   = 106
+-- 主/副两环整体向中心收：内环（分类=主）与第二层环（功能=副）同时内移，
+-- 由下面几何里的 REF 边距补偿，使地图缩放不变、仅环半径收拢。
 
 ---------------------------------------------------------------- 单窗口实例
 local win   -- 当前窗口（本库按单窗口使用）
@@ -459,7 +461,7 @@ function Celest:_build()
 		maxSegs = math.max(maxSegs, math.ceil(#c.items / PER_RING))
 	end
 	local R_OUT = R_FIRST + (maxSegs - 1) * STEP_R
-	local REF   = math.ceil((R_OUT + 80) * 2 / 10) * 10
+	local REF   = math.ceil((R_OUT + 118) * 2 / 10) * 10
 
 	local gui = mk("ScreenGui", {
 		Name = "CelestUI", ResetOnSpawn = false, IgnoreGuiInset = true,
