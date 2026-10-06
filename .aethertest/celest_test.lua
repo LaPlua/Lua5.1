@@ -95,12 +95,24 @@ for i = 1, math.min(#beforeTxts, #after) do
 	total = total + 1
 	if beforeTxts[i] ~= after[i].Text then changed = changed + 1 end
 end
+-- [3] 三级星环：主侧边栏 / 副侧边栏 / 功能星 三层节点都应存在
+local subs, cats, stars = 0, 0, 0
+for _, d in ipairs(CoreGui:GetDescendants()) do
+	if d.Name == "CelestSub" then subs = subs + 1
+	elseif d.Name == "CelestCategory" then cats = cats + 1
+	elseif d.Name == "CelestStar" then stars = stars + 1 end
+end
+if cats == 0 then __ERR[#__ERR + 1] = "未找到主侧边栏星点（CelestCategory）" end
+if subs == 0 then __ERR[#__ERR + 1] = "未找到副侧边栏星点（CelestSub）" end
+if stars == 0 then __ERR[#__ERR + 1] = "未找到功能星（CelestStar）" end
+
 __REPORT = {
 	"数值标签数=" .. tostring(nb),
 	"before=" .. beforeTxt,
 	"after=" .. snapshot(after),
 	"TextButton数=" .. tostring(#btns),
 	"拖动后发生变化的标签数=" .. tostring(changed) .. "/" .. tostring(total),
+	"主栏星点=" .. tostring(cats) .. " · 副栏星点=" .. tostring(subs) .. " · 功能星=" .. tostring(stars),
 }
 if nb == 0 then
 	__ERR[#__ERR + 1] = "没有找到任何数值星数值标签"

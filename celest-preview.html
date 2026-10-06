@@ -113,6 +113,16 @@
   .cat.sel .name{color:var(--ui-hi)}
   .cat:hover .name{color:var(--ui-hi)}
 
+  /* 副侧边栏节点（第2环 · 子类） */
+  .sub .tag{width:36px;height:36px;border-radius:50%;border:1px solid var(--line-2);
+    background:rgba(10,7,22,.55);font-size:12px;color:var(--dim);backdrop-filter:blur(3px)}
+  .sub .name{position:absolute;left:0;top:28px;transform:translateX(-50%);white-space:nowrap;
+    font-family:var(--serif);font-size:11px;letter-spacing:.28em;color:var(--dim-2);transition:color .24s}
+  .sub.sel .tag{color:#fff;border-color:rgba(183,157,255,.6);
+    box-shadow:0 0 20px rgba(169,139,255,.38),inset 0 0 16px rgba(169,139,255,.16);transform:translate(-50%,-50%) scale(1.12)}
+  .sub.sel .name{color:var(--ui-hi)}
+  .sub:hover .name{color:var(--ui-hi)}
+
   /* 功能星 */
   .star .tag{flex-direction:column;gap:8px;width:150px;padding:8px 6px}
   .star .dot{width:9px;height:9px;border-radius:50%;border:1px solid rgba(205,198,255,.42);
@@ -311,50 +321,68 @@
   const trailHint = document.getElementById('trailHint');
 
   /* ---------------- 数据 ---------------- */
+  /* 三级同心星环：第1环主侧边栏（大类）/ 第2环副侧边栏（子类，一个主栏可挂多个）/ 第3环起功能星 */
   const DATA = [
-    { id:'combat', glyph:'✦', name:'兵戈', stars:[
-      { n:'自动瞄准', t:'toggle', on:false },
-      { n:'穿墙视野', t:'toggle', on:true  },
-      { n:'无后坐力', t:'toggle', on:false },
-      { n:'弹道预判', t:'toggle', on:true  },
-      { n:'平滑阻尼', t:'value',  v:0.35   },
-      { n:'视野半径', t:'value',  v:0.62   },
-      { n:'作战模式', t:'select', opts:['平衡','激进','潜行'], v:'平衡' },
-      { n:'锁定目标', t:'action' },
+    { id:'combat', glyph:'✦', name:'兵戈', subs:[
+      { glyph:'◎', name:'瞄准', stars:[
+        { n:'自动瞄准', t:'toggle', on:false },
+        { n:'弹道预判', t:'toggle', on:true  },
+        { n:'视野半径', t:'value',  v:0.62   },
+        { n:'作战模式', t:'select', opts:['平衡','激进','潜行'], v:'平衡' },
+      ]},
+      { glyph:'⬡', name:'武备', stars:[
+        { n:'穿墙视野', t:'toggle', on:true  },
+        { n:'无后坐力', t:'toggle', on:false },
+        { n:'平滑阻尼', t:'value',  v:0.35   },
+        { n:'锁定目标', t:'action' },
+      ]},
     ]},
-    { id:'sight', glyph:'◈', name:'观照', stars:[
-      { n:'描边高亮', t:'toggle', on:true  },
-      { n:'骨架绘制', t:'toggle', on:false },
-      { n:'方框标记', t:'toggle', on:false },
-      { n:'距离读数', t:'toggle', on:true  },
-      { n:'描边浓度', t:'value',  v:0.48   },
-      { n:'绘制层数', t:'value',  v:0.75   },
+    { id:'sight', glyph:'◈', name:'观照', subs:[
+      { glyph:'✦', name:'标记', stars:[
+        { n:'描边高亮', t:'toggle', on:true  },
+        { n:'方框标记', t:'toggle', on:false },
+      ]},
+      { glyph:'❖', name:'读数', stars:[
+        { n:'骨架绘制', t:'toggle', on:false },
+        { n:'距离读数', t:'toggle', on:true  },
+        { n:'描边浓度', t:'value',  v:0.48   },
+        { n:'绘制层数', t:'value',  v:0.75   },
+      ]},
     ]},
-    { id:'move', glyph:'❖', name:'行止', stars:[
-      { n:'疾行',     t:'toggle', on:false },
-      { n:'二段跃',   t:'toggle', on:false },
-      { n:'凌波',     t:'toggle', on:false },
-      { n:'牵引',     t:'toggle', on:false },
-      { n:'速度倍率', t:'value',  v:0.40   },
-      { n:'滞空时间', t:'value',  v:0.20   },
+    { id:'move', glyph:'❖', name:'行止', subs:[
+      { glyph:'➤', name:'身法', stars:[
+        { n:'疾行',     t:'toggle', on:false },
+        { n:'二段跃',   t:'toggle', on:false },
+        { n:'凌波',     t:'toggle', on:false },
+        { n:'牵引',     t:'toggle', on:false },
+      ]},
+      { glyph:'≈', name:'机动', stars:[
+        { n:'速度倍率', t:'value',  v:0.40   },
+        { n:'滞空时间', t:'value',  v:0.20   },
+      ]},
     ]},
-    { id:'order', glyph:'⊙', name:'律令', stars:[
-      { n:'星象',     t:'toggle', on:false },  /* 仅接口，未实现 */
-      { n:'搜索面板', t:'toggle', on:true  },
-      { n:'星痕常显', t:'toggle', on:true  },
-      { n:'星痕显名', t:'toggle', on:true  },
-      { n:'归寂延时', t:'value',  v:0.30   },
-      { n:'动效浓度', t:'value',  v:0.80   },
-      { n:'归寂',     t:'action' },
+    { id:'order', glyph:'⊙', name:'律令', subs:[
+      { glyph:'▤', name:'界面', stars:[
+        { n:'星象',     t:'toggle', on:false },  /* 仅接口，未实现 */
+        { n:'搜索面板', t:'toggle', on:true  },
+        { n:'星痕常显', t:'toggle', on:true  },
+        { n:'星痕显名', t:'toggle', on:true  },
+      ]},
+      { glyph:'⚙', name:'参数', stars:[
+        { n:'归寂延时', t:'value',  v:0.30   },
+        { n:'动效浓度', t:'value',  v:0.80   },
+        { n:'归寂',     t:'action' },
+      ]},
     ]},
   ];
 
-  let active = 0;             /* 当前分类 */
+  let active = 0;             /* 当前主侧边栏（第1环） */
+  let activeSub = 0;          /* 当前副侧边栏（第2环） */
   let selStar = null;         /* 选中的数值星 */
   let mode = 'pc';
 
-  const R_IN = 120, R_OUT = 258, S = 760;   /* 主/副两环整体向中心收；viewBox 760 基准，实际用百分比定位 */
-  const CX = 50, CY = 50;                    /* 百分比 */
+  const R_PRIMARY = 112, R_SUB = 192, R_FUNC = 274, S = 760;   /* 三级同心星环半径 */
+  const CX = 50, CY = 50;                                       /* 百分比 */
 
   /* ---------------- 星场 ---------------- */
   (function starfield(){
@@ -376,13 +404,13 @@
   function drawRings(){
     const pct = r => r/S*100;
     let h = '';
-    [[R_IN],[R_OUT]].forEach(([r])=>{
+    [R_PRIMARY, R_SUB, R_FUNC].forEach((r)=>{
       h += `<circle class="ring-c" cx="${CX}" cy="${CY}" r="${pct(r)}"></circle>`;
     });
     for(let i=0;i<72;i++){
       const a = i/72*Math.PI*2;
       const long = i%6===0;
-      const r1 = pct(R_OUT+2), r2 = pct(R_OUT+(long?12:7));
+      const r1 = pct(R_FUNC+2), r2 = pct(R_FUNC+(long?12:7));
       h += `<line class="ring-tick" x1="${CX+Math.cos(a)*r1}" y1="${CY+Math.sin(a)*r1}"
               x2="${CX+Math.cos(a)*r2}" y2="${CY+Math.sin(a)*r2}" opacity="${long?.8:.35}"></line>`;
     }
@@ -401,19 +429,30 @@
 
   function buildMap(){
     nodes.innerHTML = '';
-    /* 内环：分类 */
+    /* 第1环 · 主侧边栏（大类） */
     DATA.forEach((cat,i)=>{
       const el = document.createElement('div');
       el.className = 'node cat'+(i===active?' sel':'');
       el.dataset.i = i;
       el.innerHTML = `<div class="tag">${cat.glyph}</div><div class="name">${cat.name}</div>`;
-      place(el, R_IN, -90 + i*(360/DATA.length));
+      place(el, R_PRIMARY, -90 + i*(360/DATA.length));
       el.querySelector('.tag').addEventListener('click', ()=>switchCat(i));
       nodes.appendChild(el);
     });
-    /* 外环：功能星 */
+    /* 第2环 · 副侧边栏（子类，一个主栏可挂多个） */
     const cat = DATA[active];
-    cat.stars.forEach((s,i)=>{
+    cat.subs.forEach((sub,i)=>{
+      const el = document.createElement('div');
+      el.className = 'node sub'+(i===activeSub?' sel':'');
+      el.dataset.i = i;
+      el.innerHTML = `<div class="tag">${sub.glyph}</div><div class="name">${sub.name}</div>`;
+      place(el, R_SUB, -90 + i*(360/cat.subs.length));
+      el.querySelector('.tag').addEventListener('click', ()=>switchSub(i));
+      nodes.appendChild(el);
+    });
+    /* 第3环起 · 功能星（当前副栏的功能） */
+    const stars = cat.subs[activeSub].stars;
+    stars.forEach((s,i)=>{
       const el = document.createElement('div');
       el.className = 'node star'+(s.t==='toggle'&&s.on?' on':'');
       el.dataset.i = i;
@@ -423,41 +462,36 @@
       else if(s.t==='select') extra = `<span class="val sel-val">${s.v||''}</span><span class="chev"></span>`;
       else if(s.t==='action') extra = `<span class="act">▸</span>`;
       el.innerHTML = `<div class="tag"><span class="dot"></span><span class="label">${s.n}</span>${extra}</div>`;
-      place(el, R_OUT, -90 + i*(360/cat.stars.length) + (360/cat.stars.length)/2 - 90 + 90);
+      place(el, R_FUNC, -90 + i*(360/stars.length) + (360/stars.length)/2);
       const tag = el.querySelector('.tag');
       tag.addEventListener('mouseenter', ()=>hoverStar(el,true));
       tag.addEventListener('mouseleave', ()=>hoverStar(el,false));
       tag.addEventListener('click', (e)=>{ e.stopPropagation(); tapStar(el, s); });
       nodes.appendChild(el);
     });
-    /* 星轨连线 */
-    const catEls = [...nodes.querySelectorAll('.cat')];
-    catEls.forEach((el,i)=>{
-      if(i!==active) return;
-      const orbitG = document.createElementNS('http://www.w3.org/2000/svg','g');
-      orbitG.setAttribute('id','orbits');
-      const aA = (-90 + i*(360/DATA.length))*Math.PI/180;
-      [...nodes.querySelectorAll('.star')].forEach(st=>{
-        const r = st.querySelector('.tag').getBoundingClientRect();
-        const nodeR = st.getBoundingClientRect();
-        const b = nodeR.width ? Math.atan2(nodeR.top - map.getBoundingClientRect().top - map.getBoundingClientRect().height/2,
-                                           nodeR.left - map.getBoundingClientRect().left - map.getBoundingClientRect().width/2) : 0;
-      });
-    });
     refreshTrails();
   }
 
-  function switchCat(i){
-    if(i===active) return;
-    active = i; selStar = null;
-    hideArc();
-    buildMap();
-    /* 重排动画：外环星淡入 */
+  function fadeStars(){
     [...nodes.querySelectorAll('.star')].forEach((el,k)=>{
       el.style.transition='opacity .34s ease';
       el.style.opacity='0';
       setTimeout(()=>{ el.style.opacity='1'; }, 40 + k*26);
     });
+  }
+
+  function switchCat(i){
+    if(i===active) return;
+    active = i; activeSub = 0; selStar = null;
+    hideArc(); closeDD();
+    buildMap(); fadeStars();
+  }
+
+  function switchSub(i){
+    if(i===activeSub) return;
+    activeSub = i; selStar = null;
+    hideArc(); closeDD();
+    buildMap(); fadeStars();
   }
 
   function hoverStar(el, on){
@@ -627,9 +661,9 @@
   const OFF_NAME = { '律令': 1 };
   function activeList(){
     const out = [];
-    DATA.forEach(c=>c.stars.forEach(s=>{
+    DATA.forEach(c=>c.subs.forEach(sub=>sub.stars.forEach(s=>{
       if(s.t==='toggle' && s.on && s.n!=='星象' && s.n!=='星痕常显' && s.n!=='星痕显名' && s.n!=='搜索面板') out.push(s.n);
-    }));
+    })));
     return out;
   }
   function refreshTrails(){
@@ -722,17 +756,17 @@
   function renderRes(){
     const q = wq.value.trim();
     const rows = [];
-    DATA.forEach((c,ci)=>c.stars.forEach(s=>{
-      if(q && !s.n.includes(q) && !c.name.includes(q)) return;
-      rows.push({c,ci,s});
-    }));
+    DATA.forEach((c,ci)=>c.subs.forEach((sub,si)=>sub.stars.forEach(s=>{
+      if(q && !s.n.includes(q) && !c.name.includes(q) && !sub.name.includes(q)) return;
+      rows.push({c,ci,sub,si,s});
+    })));
     if(!rows.length){
       wres.innerHTML = '<div class="empty">虚空无应…</div>';
       wItems = []; wIdx = 0; return;
     }
     wres.innerHTML = rows.slice(0,9).map(r=>
-      `<div class="row" data-ci="${r.ci}" data-n="${r.s.n}">`+
-      `<span class="nm">${r.s.n}</span><span class="st">${stateOf(r.s)}</span><b>${r.c.name}</b></div>`
+      `<div class="row" data-ci="${r.ci}" data-si="${r.si}" data-n="${r.s.n}">`+
+      `<span class="nm">${r.s.n}</span><span class="st">${stateOf(r.s)}</span><b>${r.c.name} / ${r.sub.name}</b></div>`
     ).join('') + '<div class="tip">↑↓ 选择 · Enter 执行 · ESC 关闭</div>';
     wItems = [...wres.querySelectorAll('.row')];
     wItems.forEach(el=>el.addEventListener('click', ()=>activateRow(el)));
@@ -742,9 +776,10 @@
 
   /* 执行某一行：开关就地切换（面板保持），下拉展开，动作/数值切到对应星 */
   function activateRow(el){
-    const ci = +el.dataset.ci, name = el.dataset.n;
-    switchCat(ci);
-    const s = DATA[ci].stars.find(x=>x.n === name);
+    const ci = +el.dataset.ci, si = +el.dataset.si, name = el.dataset.n;
+    switchCat(ci);                                   /* 切主栏；同栏则不动 */
+    if(ci === active) switchSub(si);                 /* 再切到对应副栏 */
+    const s = DATA[ci].subs[si].stars.find(x=>x.n === name);
     const starEl = [...nodes.querySelectorAll('.star')]
       .find(x=>x.querySelector('.label').textContent === name);
     if(!s || !starEl){ whisperClose(); return; }

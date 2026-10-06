@@ -1,25 +1,27 @@
 --[[
 	星 穹 · C E L E S T   —— 无窗体星图 UI 库
 	=================================================================
-	不依赖任何 UI 库。两圈同心星环＝主侧边栏 + 副侧边栏：
-	主侧边栏（内环）放分类星点，副侧边栏（第二层环）放当前分类的功能星；
-	某类功能多则自动再向外多开几环（仍属该主栏的副侧边栏）。电脑 + 手机通用。
+	不依赖任何 UI 库。三级同心星环：
+	第1环 = 主侧边栏（大类）；第2环 = 副侧边栏（一个主栏可挂多个子类）；
+	第3环起 = 当前副栏的功能星，功能多则自动再向外多开几环。电脑 + 手机通用。
 
 	用法：
 		local Celest = loadstring(game:HttpGet("https://raw.githubusercontent.com/LaPlua/Lua5.1/main/Celest.lua"))()
 		local win = Celest.new({ title = "星穹", subtitle = "C E L E S T", hint = "按 ALT 呼出 / 再按归寂" })
 
-		local cat = win:Category("兵戈", "sword")   -- glyph 可用内置矢量图标名，如 sword / eye / gear
-		cat:Toggle("自动瞄准", false, function(on) print(on) end)
-		cat:Slider("视野半径", 0, 100, 50, function(v) print(v) end)
-		cat:Dropdown("模式", { "平衡", "激进" }, "平衡", function(v) print(v) end)
-		cat:Button("执行一次", function() print("bang") end)
+		local cat = win:Category("兵戈", "sword")      -- 主侧边栏（第1环）
+		local aim = cat:Category("瞄准", "target")     -- 副侧边栏（第2环），一个主栏可挂多个
+		aim:Toggle("自动瞄准", false, function(on) print(on) end)
+		aim:Slider("视野半径", 0, 100, 50, function(v) print(v) end)
+		aim:Dropdown("模式", { "平衡", "激进" }, "平衡", function(v) print(v) end)
+		aim:Button("执行一次", function() print("bang") end)
 
 	操作：
 		· 电脑：按 ALT 呼出星图，再按归寂；CTRL + K 搜索
 		· 手机：点右下角常驻星点呼出，再点归寂
-		· 主侧边栏（内环）星点 = 选分类；副侧边栏（第二层环）星点 = 开关；
-		  数值星拖动调值；下拉星展开选择；带箭头的星点一次执行；点空白只取消选中，绝不丢状态
+		· 第1环星点 = 选主侧边栏；第2环星点 = 选副侧边栏；第3环起 = 功能星；
+		  功能星里开关点击亮灭、数值星拖动调值、下拉星展开选择、带箭头的点一次执行；
+		  点空白只取消选中，绝不丢状态
 --]]
 
 local Players      = game:GetService("Players")
@@ -329,12 +331,11 @@ local function drawIcon(name, parent, color, box)
 end
 
 -- 圆环分段参数（环距已在原示例基础上收紧）
-local PER_RING = 8
-local R_IN     = 136
-local R_FIRST  = 248
-local STEP_R   = 106
--- 主侧边栏（内环 · 分类）与副侧边栏（第二层环 · 功能）整体向中心收，
--- 由下面几何里的 REF 边距补偿，使地图缩放不变、仅两环半径收拢。
+local PER_RING  = 8
+local R_PRIMARY = 130      -- 第1环 · 主侧边栏（大类）
+local R_SUB     = 226      -- 第2环 · 副侧边栏（子类，一个主栏可挂多个）
+local R_FUNC    = 332      -- 第3环 · 功能星（首环）
+local STEP_R    = 104      -- 功能星各环之间的间距
 
 ---------------------------------------------------------------- 单窗口实例
 local win   -- 当前窗口（本库按单窗口使用）
@@ -352,7 +353,8 @@ local function newWindow(cfg)
 	self.cfg      = cfg
 	self.cats     = {}
 	self.items    = {}      -- name -> item
-	self.active   = 1
+	self.active   = 1       -- 当前主侧边栏（第1环）下标
+	self.activeSub = 1      -- 当前副侧边栏（第2环）下标
 	self.shell    = nil
 	self.mapOpen, self.pinned = false, false
 	self.selected = nil
@@ -362,20 +364,51 @@ local function newWindow(cfg)
 end
 
 ---------------------------------------------------------------- 数据层 API
+-- 主侧边栏（第1环）：win:Category(name, glyph)
 function Celest:Category(name, glyph)
-	local c = { name = name, glyph = glyph or "✦", items = {} }
+	local c = { name = name, glyph = glyph or "✦", subs = {}, items = {} }
 	self.cats[#self.cats + 1] = c
 	self:_dirty()
-	return setmetatable({ win = self, data = c, name = c.name, items = c.items }, { __index = Celest._Cat })
+	return setmetatable({
+		win = self, data = c, name = c.name, isPrimary = true, subs = c.subs, items = c.items,
+	}, { __index = Celest._Cat })
 end
 
 Celest._Cat = {}
 Celest._Cat.__index = Celest._Cat
 
+-- 副侧边栏（第2环）：primary:Category(name, glyph)，一个主栏可挂多个副栏
+function Celest._Cat:Category(name, glyph)
+	if not self.isPrimary then return nil end   -- 只支持两级
+	local p = self.data
+	local s = { name = name, glyph = glyph or "✦", items = {} }
+	p.subs[#p.subs + 1] = s
+	self.win:_dirty()
+	return setmetatable({
+		win = self.win, data = s, name = s.name, isPrimary = false, items = s.items,
+	}, { __index = Celest._Cat })
+end
+
+-- 取「该代理下用于放功能的那一层」：副栏直接用自己；主栏则落到其第 1 个副栏
+-- （若主栏还没建副栏，就自动补一个「常规」副栏，避免直接往主栏塞功能时丢东西）
+local function itemHost(cat)
+	if not cat.isPrimary then return cat end
+	local p = cat.data
+	local s = p.subs[1]
+	if not s then
+		s = { name = "常规", glyph = "dot", items = {} }
+		p.subs[1] = s
+	end
+	return setmetatable({
+		win = cat.win, data = s, name = s.name, isPrimary = false, items = s.items,
+	}, { __index = Celest._Cat })
+end
+
 local function addItem(cat, item)
-	cat.data.items[#cat.data.items + 1] = item
-	cat.win.items[item.name] = item
-	cat.win:_dirty()
+	local host = itemHost(cat)
+	host.data.items[#host.data.items + 1] = item
+	host.win.items[item.name] = item
+	host.win:_dirty()
 	return item
 end
 
@@ -414,8 +447,12 @@ end
 function Celest:Select(name)
 	for i, c in ipairs(self.cats) do
 		if c.name == name then
-			self.active = i
-			if self.shell then self:_renderOuter() end
+			self.active    = i
+			self.activeSub = 1
+			if self.shell then
+				if self._paintCatPoints then self._paintCatPoints() end
+				self:_renderOuter()
+			end
 			return
 		end
 	end
@@ -443,12 +480,14 @@ function Celest:_build()
 
 	local cfg = self.cfg
 
-	-- 几何：按「单类功能数」决定最多几环
+	-- 几何：按「单个副栏里最多的功能数」决定功能星最多开几环
 	local maxSegs = 1
 	for _, c in ipairs(self.cats) do
-		maxSegs = math.max(maxSegs, math.ceil(#c.items / PER_RING))
+		for _, s in ipairs(c.subs) do
+			maxSegs = math.max(maxSegs, math.ceil(#s.items / PER_RING))
+		end
 	end
-	local R_OUT = R_FIRST + (maxSegs - 1) * STEP_R
+	local R_OUT = R_FUNC + (maxSegs - 1) * STEP_R
 	local REF   = math.ceil((R_OUT + 118) * 2 / 10) * 10
 
 	local gui = mk("ScreenGui", {
@@ -525,7 +564,9 @@ function Celest:_build()
 	local baseScale = 1
 
 	local ringLayer = mk("Frame", { Parent = map, Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, ZIndex = 1 })
-	local rg = ring(R_IN * 2, T.line, .90); rg.Parent = ringLayer
+	-- 第1环（主侧边栏）与第2环（副侧边栏）的轨线；功能星环由 renderOuter 逐段绘制
+	local rgInner = ring(R_PRIMARY * 2, T.line, .90); rgInner.Parent = ringLayer
+	local rgSub   = ring(R_SUB * 2, T.line, .93);     rgSub.Parent = ringLayer
 	local ticks = mk("Frame", { Parent = ringLayer, Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1 })
 	for i = 0, 71 do
 		local deg  = i / 72 * 360
@@ -562,6 +603,7 @@ function Celest:_build()
 	end)
 
 	local outerLayer = mk("Frame", { Parent = map, Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, ZIndex = 4 })
+	local subLayer   = mk("Frame", { Parent = map, Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, ZIndex = 6 })
 	local catLayer   = mk("Frame", { Parent = map, Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, ZIndex = 7 })
 
 	---------------------------------------------------------------- 星点视觉
@@ -878,7 +920,7 @@ function Celest:_build()
 	local function buildCats()
 		for i, c in ipairs(self.cats) do
 			local node = mk("Frame", { Parent = catLayer, Size = UDim2.fromOffset(56, 56), BackgroundTransparency = 1, ZIndex = 7 })
-			placeOn(node, R_IN, -90 + (i - 1) * (360 / #self.cats))
+			placeOn(node, R_PRIMARY, -90 + (i - 1) * (360 / #self.cats))
 
 			local useIcon = ICONS[c.glyph]
 			local btn = mk("TextButton", {
@@ -905,7 +947,9 @@ function Celest:_build()
 			btn.MouseButton1Click:Connect(function()
 				if self.active == i then return end
 				self.active = i
+				self.activeSub = 1
 				clearSelection()
+				closeDropdown()
 				-- 切分类时给一圈扩散脉冲，点击不再"无声无息"
 				local rr = circle(node, 6, T.accent, 1)
 				stroke(rr, T.accent, 1, .2); rr.ZIndex = 8
@@ -922,27 +966,118 @@ function Celest:_build()
 	end
 	self._paintCatPoints = paintCats
 
-	---------------------------------------------------------------- 外环 · 当前分类的功能星
+	---------------------------------------------------------------- 功能星环 · 当前副侧边栏的功能星
 	local function renderOuter()
 		for _, ch in ipairs(outerLayer:GetChildren()) do
 			if ch:IsA("GuiObject") then ch:Destroy() end
 		end
-		local cat  = self.cats[self.active]
+		local cat = self.cats[self.active]
 		if not cat then return end
-		local n    = #cat.items
+		local sub = cat.subs[self.activeSub]
+		if not sub then return end
+		local n    = #sub.items
+		if n == 0 then return end
 		local segs = math.max(1, math.ceil(n / PER_RING))
 		for s = 1, segs do
-			local r = R_FIRST + (s - 1) * STEP_R
+			local r = R_FUNC + (s - 1) * STEP_R
 			local rr = ring(r * 2, T.line, .90); rr.Parent = outerLayer
 			local seg = {}
-			for k = (s - 1) * PER_RING + 1, math.min(s * PER_RING, n) do seg[#seg + 1] = cat.items[k] end
-			local m, step = #seg, 360 / math.max(1, #seg)
+			for k = (s - 1) * PER_RING + 1, math.min(s * PER_RING, n) do seg[#seg + 1] = sub.items[k] end
+			local step = 360 / math.max(1, #seg)
 			for j, it in ipairs(seg) do
 				makeStar(cat, self.active, it, r, -90 + step / 2 + (j - 1) * step)
 			end
 		end
 	end
 	self._renderOuter = renderOuter
+
+	---------------------------------------------------------------- 副侧边栏 · 当前主栏下的子类星点（第2环）
+	local subNodes = {}
+	local function paintSubs()
+		for i, s in ipairs(subNodes) do
+			local on = (i == self.activeSub)
+			tw(s.btn, .24, {
+				TextColor3 = on and T.star or T.dim,
+				TextTransparency = on and 0 or .42,
+				BackgroundTransparency = on and .14 or .6,
+			})
+			tw(s.st, .24, { Transparency = on and .26 or .76 })
+			tw(s.name, .24, { TextTransparency = on and .06 or .9 })
+			tw(s.dot, .24, { Size = UDim2.fromOffset(on and 8 or 5, on and 8 or 5) })
+			if s.iconParts then
+				for _, p in ipairs(s.iconParts) do
+					if p:IsA("UIStroke") then tw(p, .24, { Color = on and T.star or T.dim })
+					else tw(p, .24, { BackgroundColor3 = on and T.star or T.dim }) end
+				end
+			end
+		end
+	end
+	self._paintSubPoints = paintSubs
+
+	local function renderSubs()
+		for _, ch in ipairs(subLayer:GetChildren()) do
+			if ch:IsA("GuiObject") then ch:Destroy() end
+		end
+		subNodes = {}
+		local cat = self.cats[self.active]
+		if not cat then return end
+		local subs = cat.subs
+		local n = #subs
+		if n == 0 then return end
+		if self.activeSub < 1 or self.activeSub > n then self.activeSub = 1 end
+		local step = 360 / n
+		for i, s in ipairs(subs) do
+			local node = mk("Frame", { Parent = subLayer, Size = UDim2.fromOffset(46, 46), BackgroundTransparency = 1, ZIndex = 6 })
+			placeOn(node, R_SUB, -90 + (i - 1) * step)
+
+			local useIcon = ICONS[s.glyph]
+			local btn = mk("TextButton", {
+				Name = "CelestSub",
+				Parent = node, Size = UDim2.fromScale(1, 1),
+				BackgroundColor3 = T.panel, BackgroundTransparency = .6,
+				Text = useIcon and "" or tostring(s.glyph or "✦"),
+				Font = Enum.Font.Gotham, TextSize = 13,
+				TextColor3 = T.dim, TextTransparency = .42, AutoButtonColor = false, ZIndex = 6,
+			})
+			round(btn, 1)
+			local st = stroke(btn, T.line, 1, .76)
+			local iconParts = nil
+			if useIcon then _, iconParts = drawIcon(s.glyph, btn, T.dim, 20) end
+			local dot = circle(node, 5, T.accent, 1)
+			dot.Position = UDim2.new(.5, 0, 1, -2); dot.ZIndex = 7
+			local name = mk("TextLabel", {
+				Parent = node, BackgroundTransparency = 1,
+				Size = UDim2.fromOffset(110, 15), Position = UDim2.new(.5, 0, 0, -15), AnchorPoint = Vector2.new(.5, 1),
+				Font = Enum.Font.Gotham, TextSize = 12,
+				TextColor3 = T.dim, TextTransparency = .9, Text = s.name, ZIndex = 7,
+			})
+			btn.MouseEnter:Connect(function() tw(name, .2, { TextTransparency = .16 }) end)
+			btn.MouseButton1Click:Connect(function()
+				if self.activeSub == i then return end
+				self.activeSub = i
+				clearSelection()
+				closeDropdown()
+				local rr = circle(node, 5, T.accent, 1)
+				stroke(rr, T.accent, 1, .2); rr.ZIndex = 7
+				tw(rr, .68, { Size = UDim2.fromOffset(84, 84) }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+				local s2 = rr:FindFirstChildOfClass("UIStroke")
+				if s2 then tw(s2, .68, { Transparency = 1 }) end
+				task.delay(.72, function() if rr.Parent then rr:Destroy() end end)
+				paintSubs()
+				renderOuter()
+			end)
+			subNodes[i] = { btn = btn, st = st, name = name, dot = dot, iconParts = iconParts }
+		end
+		paintSubs()
+	end
+
+	-- 主栏 / 副栏任一变化时，重绘第2环与功能星环
+	local function renderMap()
+		renderSubs()
+		renderOuter()
+	end
+	self._renderSubs  = renderSubs
+	self._renderOuter = renderMap
 
 	---------------------------------------------------------------- 星痕（右上，仅开环时出现）
 	local trailBox = mk("Frame", {
@@ -971,8 +1106,10 @@ function Celest:_build()
 		end
 		local names = {}
 		for _, cat in ipairs(self.cats) do
-			for _, it in ipairs(cat.items) do
-				if it.kind == "toggle" and it.value then names[#names + 1] = it.name end
+			for _, s in ipairs(cat.subs) do
+				for _, it in ipairs(s.items) do
+					if it.kind == "toggle" and it.value then names[#names + 1] = it.name end
+				end
 			end
 		end
 		for i = 1, math.min(#names, 6) do
@@ -1115,9 +1252,13 @@ function Celest:_build()
 		wRows, wButtons = {}, {}
 		local q = wi.Text
 		for ci, cat in ipairs(self.cats) do
-			for _, it in ipairs(cat.items) do
-				if q == "" or string.find(it.name, q, 1, true) or string.find(cat.name, q, 1, true) then
-					wRows[#wRows + 1] = { ci = ci, it = it, cat = cat }
+			for si, s in ipairs(cat.subs) do
+				for _, it in ipairs(s.items) do
+					local hit = q == "" or string.find(it.name, q, 1, true)
+						or string.find(s.name, q, 1, true) or string.find(cat.name, q, 1, true)
+					if hit then
+						wRows[#wRows + 1] = { ci = ci, si = si, it = it, cat = cat, sub = s }
+					end
 				end
 			end
 		end
@@ -1146,7 +1287,7 @@ function Celest:_build()
 				Parent = b, BackgroundTransparency = 1, Size = UDim2.new(1, -190, 1, 0),
 				Position = UDim2.new(0, 34, 0, 0), Font = Enum.Font.Gotham, TextSize = 12,
 				TextColor3 = T.accent, TextTransparency = .5,
-				Text = tostring(r.cat.name) .. "  ·  " .. kindState(it),
+				Text = tostring(r.cat.name) .. " / " .. tostring(r.sub.name) .. "  ·  " .. kindState(it),
 				TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 43,
 			})
 			wButtons[i] = { btn = b, name = nameLbl, state = stateLbl }
@@ -1159,10 +1300,11 @@ function Celest:_build()
 	end
 
 	activate = function(r)
-		local it, ci = r.it, r.ci
-		if ci ~= self.active then
-			self.active = ci
+		local it, ci, si = r.it, r.ci, r.si
+		if ci ~= self.active or si ~= self.activeSub then
+			self.active, self.activeSub = ci, si
 			self._paintCatPoints()
+			self._paintSubPoints()
 			self._renderOuter()
 		end
 		if it.kind == "toggle" then
@@ -1390,7 +1532,7 @@ function Celest:_build()
 	self.mapOpen, self.pinned = false, false
 
 	buildCats()
-	renderOuter()
+	renderMap()            -- 首帧同时绘出第2环（副侧边栏）与第3环（功能星）
 	self:_refreshTrail()
 	gather()
 end

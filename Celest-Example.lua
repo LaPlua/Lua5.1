@@ -25,118 +25,105 @@ local win = Celest.new({
 })
 
 --==============================================================================
--- 2. 分类（内环星点）
---   win:Category(name, glyph)
---   glyph 是类别星点上显示的标记：
+-- 2. 三级同心星环：主侧边栏 / 副侧边栏 / 功能
+--   win:Category(name, glyph)          主侧边栏（第1环·大类）
+--   主栏:Category(name, glyph)         副侧边栏（第2环·子类，一个主栏可挂多个）
+--   副栏:Toggle/Slider/Button/Dropdown 功能星（第3环起）
+--
+--   glyph 是星点上的标记：
 --     · 传内置图标名（推荐）→ 用矢量图标绘制，不依赖字体，任何执行器都不会乱码
 --       （如 "sword" "eye" "run" "gear" "target" "shield" …，
 --        完整列表见教程，或运行时打印 Celest.IconNames）
 --     · 传任意字符（如 "✦"）→ 直接显示该字符
---   点击类别星点 → 外环切换为该分类的功能星
+--   点击第1环星点 → 切换主侧边栏；点击第2环星点 → 切换副侧边栏；
+--   第3环起显示当前副栏的功能星
 --==============================================================================
-local combat = win:Category("兵戈", "sword")
-local visual = win:Category("观照", "eye")
-local move   = win:Category("行止", "run")
-local system = win:Category("律令", "gear")
 
 --==============================================================================
--- 3. 控件：Toggle（开关）
+-- 3. 主栏：兵戈（下挂「瞄准」「武备」两个副栏）
+--==============================================================================
+local combat = win:Category("兵戈", "sword")        -- 主侧边栏（第1环）
+local aim    = combat:Category("瞄准", "target")    -- 副侧边栏（第2环）
+local arms   = combat:Category("武备", "shield")    -- 同一个主栏可挂多个副栏
+
+--==============================================================================
+-- 4. 控件：Toggle（开关）
 --   Toggle(name, default, cb) · cb(on) 在点击切换时触发
 --   返回 item，可用 t.value 读当前状态
 --==============================================================================
-local aim = combat:Toggle("自动瞄准", false, function(on)
-	print("[兵戈] 自动瞄准 ->", on)
-end)
-combat:Toggle("穿墙视野", true, function(on)
-	print("[兵戈] 穿墙视野 ->", on)
-end)
-combat:Toggle("无后坐力", false, function(on)
-	print("[兵戈] 无后坐力 ->", on)
-end)
-combat:Toggle("弹道预判", true, function(on)
-	print("[兵戈] 弹道预判 ->", on)
-end)
+aim:Toggle("自动瞄准", false, function(on) print("[兵戈/瞄准] 自动瞄准 ->", on) end)
+aim:Toggle("弹道预判", true,  function(on) print("[兵戈/瞄准] 弹道预判 ->", on) end)
+arms:Toggle("穿墙视野", true,  function(on) print("[兵戈/武备] 穿墙视野 ->", on) end)
+arms:Toggle("无后坐力", false, function(on) print("[兵戈/武备] 无后坐力 ->", on) end)
 
 --==============================================================================
--- 4. 控件：Slider（数值）
+-- 5. 控件：Slider（数值）
 --   Slider(name, min, max, default, cb) · cb(v) 在拖动时实时触发
 --   操作：先单击数值星选中，再按住左右拖动
 --   返回 item，可用 s.value 读当前值
 --==============================================================================
-local damp = combat:Slider("平滑阻尼", 0, 100, 35, function(v)
-	print("[兵戈] 平滑阻尼 ->", v)
-end)
-combat:Slider("视野半径", 0, 100, 62, function(v)
-	print("[兵戈] 视野半径 ->", v)
-end)
-
---==============================================================================
--- 5. 控件：Button（按钮）
---   Button(name, cb) · cb() 在点击时触发一次
---==============================================================================
-combat:Button("锁定最近目标", function()
-	print("[兵戈] 锁定最近目标")
-end)
+local radius = aim:Slider("视野半径", 0, 100, 62, function(v) print("[兵戈/瞄准] 视野半径 ->", v) end)
+local damp   = arms:Slider("平滑阻尼", 0, 100, 35, function(v) print("[兵戈/武备] 平滑阻尼 ->", v) end)
 
 --==============================================================================
 -- 6. 控件：Dropdown（下拉框）
 --   Dropdown(name, options, default, cb) · cb(v) 在选择某一项时触发
 --   options 为字符串数组；default 省略时取第一项
 --   操作：点该下拉星展开列表，再点其中一项选中
---   返回 item，可用 d.value 读当前选项
 --==============================================================================
-local mode = combat:Dropdown("作战模式", { "平衡", "激进", "潜行" }, "平衡", function(v)
-	print("[兵戈] 作战模式 ->", v)
+local part = aim:Dropdown("瞄准部位", { "头部", "胸部", "最近" }, "头部", function(v)
+	print("[兵戈/瞄准] 瞄准部位 ->", v)
 end)
-combat:Dropdown("瞄准部位", { "头部", "胸部", "最近" }, nil, function(v)
-	print("[兵戈] 瞄准部位 ->", v)
+local mode = arms:Dropdown("作战模式", { "平衡", "激进", "潜行" }, "平衡", function(v)
+	print("[兵戈/武备] 作战模式 ->", v)
 end)
 
 --==============================================================================
--- 7. 其它分类：功能数超过 8 个时，外环会自动多开一环
---   下面「观照」共 10 个 → 自动分 2 环
+-- 7. 控件：Button（按钮）
+--   Button(name, cb) · cb() 在点击时触发一次（带箭头的星点）
 --==============================================================================
-visual:Toggle("描边高亮", true,  function(on) print("[观照] 描边高亮 ->", on) end)
-visual:Toggle("骨架绘制", false, function(on) print("[观照] 骨架绘制 ->", on) end)
-visual:Toggle("方框标记", false, function(on) print("[观照] 方框标记 ->", on) end)
-visual:Toggle("距离读数", true,  function(on) print("[观照] 距离读数 ->", on) end)
-visual:Slider("描边浓度", 0, 100, 48, function(v) print("[观照] 描边浓度 ->", v) end)
-visual:Slider("绘制层数", 1, 8, 3, function(v) print("[观照] 绘制层数 ->", v) end)
-visual:Toggle("队友标记", false, function(on) print("[观照] 队友标记 ->", on) end)
-visual:Toggle("轨迹线",   false, function(on) print("[观照] 轨迹线 ->", on) end)
-visual:Toggle("命中音效", false, function(on) print("[观照] 命中音效 ->", on) end)
-visual:Button("清空全部标记", function() print("[观照] 清空全部标记") end)
+arms:Button("锁定最近目标", function() print("[兵戈/武备] 锁定最近目标") end)
 
 --==============================================================================
--- 8. 其它分类：普通写法
+-- 8. 主栏：观照（功能数超过 8 个时，功能星会自动向外多开一环）
 --==============================================================================
-move:Toggle("疾行",   false, function(on) print("[行止] 疾行 ->", on) end)
-move:Toggle("二段跃", false, function(on) print("[行止] 二段跃 ->", on) end)
-move:Slider("速度倍率", 1, 20, 4,   function(v) print("[行止] 速度倍率 ->", v) end)
-move:Slider("滞空时间", 0, 100, 20, function(v) print("[行止] 滞空时间 ->", v) end)
-
-system:Toggle("搜索面板", true, function(on) print("[律令] 搜索面板 ->", on) end)
-system:Slider("星痕上限", 1, 10, 6, function(v) print("[律令] 星痕上限 ->", v) end)
+local visual = win:Category("观照", "eye")
+local mark   = visual:Category("标记", "target")
+local info   = visual:Category("读数", "list")
+mark:Toggle("描边高亮", true,  function(on) print("[观照/标记] 描边高亮 ->", on) end)
+mark:Toggle("方框标记", false, function(on) print("[观照/标记] 方框标记 ->", on) end)
+mark:Toggle("队友标记", false, function(on) print("[观照/标记] 队友标记 ->", on) end)
+info:Toggle("骨架绘制", false, function(on) print("[观照/读数] 骨架绘制 ->", on) end)
+info:Toggle("距离读数", true,  function(on) print("[观照/读数] 距离读数 ->", on) end)
+info:Slider("描边浓度", 0, 100, 48, function(v) print("[观照/读数] 描边浓度 ->", v) end)
 
 --==============================================================================
--- 9. 运行时 API
+-- 9. 主栏：律令
+--==============================================================================
+local sys  = win:Category("律令", "gear")
+local core = sys:Category("核心", "gear")
+core:Toggle("搜索面板", true, function(on) print("[律令/核心] 搜索面板 ->", on) end)
+core:Slider("星痕上限", 1, 10, 6,   function(v) print("[律令/核心] 星痕上限 ->", v) end)
+
+--==============================================================================
+-- 10. 运行时 API
 --   win:Open()          展开星图
 --   win:Close()         收合星图（右下角常驻星点仍在）
---   win:Select(name)    按分类名切换
+--   win:Select(name)    按主侧边栏名切换（副栏回到第一个）
 --   win:Search(prefill) 打开「搜索」搜索（可预填关键字）
 --   win:Destroy()       销毁整个 UI
 --==============================================================================
-system:Button("展开搜索", function() win:Search() end)
-system:Button("切到「观照」", function() win:Select("观照") end)
-system:Button("关闭星图",     function() win:Close() end)
+core:Button("展开搜索",      function() win:Search() end)
+core:Button("切到「观照」",  function() win:Select("观照") end)
+core:Button("关闭星图",      function() win:Close() end)
 
 --==============================================================================
--- 10. 默认展开一次（Celest 无 StartOpen，需要就手动调用）
---    电脑按 ALT 呼出 / 再按归寂；手机点右下角常驻星点
+-- 11. 默认展开一次（Celest 无 StartOpen，需要就手动调用）
+--     电脑按 ALT 呼出 / 再按归寂；手机点右下角常驻星点
 --==============================================================================
 print("Celest", Celest.Version, "已加载：按 ALT 呼出/再按归寂 · CTRL+K 搜索 · 手机点右下星点")
 
 win:Open()
 
 -- 只读示例：想取值随时读 item.value
---   print(aim.value, damp.value, mode.value)
+--   print(radius.value, damp.value, part.value, mode.value)
