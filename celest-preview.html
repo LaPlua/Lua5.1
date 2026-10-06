@@ -150,8 +150,20 @@
   .ripple{position:absolute;left:0;top:0;width:9px;height:9px;border-radius:50%;
     border:1px solid var(--accent);transform:translate(-50%,-50%) scale(1);opacity:.8;pointer-events:none}
   .ripple.go{animation:rip .9s ease-out forwards}
+  .ripple.d2{animation-duration:.8s;opacity:.7}
   @keyframes rip{from{transform:translate(-50%,-50%) scale(1);opacity:.8}
     to{transform:translate(-50%,-50%) scale(9);opacity:0}}
+  /* 中心闪光 + 迸射火星：给点击一个"着力点" */
+  .flash{position:absolute;left:0;top:0;width:16px;height:16px;border-radius:50%;
+    background:#fff;transform:translate(-50%,-50%) scale(1);pointer-events:none;
+    animation:fl .5s ease-out forwards}
+  @keyframes fl{from{opacity:.85;transform:translate(-50%,-50%) scale(.4)}
+    to{opacity:0;transform:translate(-50%,-50%) scale(3.4)}}
+  .spark{position:absolute;left:0;top:0;width:3px;height:3px;border-radius:50%;background:#fff;
+    box-shadow:0 0 6px var(--glow);transform:translate(-50%,-50%);pointer-events:none;
+    animation:spk .6s ease-out forwards}
+  @keyframes spk{from{opacity:.9;transform:translate(-50%,-50%) translate(0,0) scale(1)}
+    to{opacity:0;transform:translate(-50%,-50%) translate(var(--sx),var(--sy)) scale(.35)}}
 
   /* 数值弧 */
   .arc-svg{position:absolute;inset:0;overflow:visible;pointer-events:none;opacity:0;transition:opacity .35s ease}
@@ -520,12 +532,36 @@
   }
 
   function ripple(el, big){
+    /* 外环 */
     const r = document.createElement('span');
     r.className = 'ripple';
     if(big) r.style.borderColor='#fff';
     el.appendChild(r);
     requestAnimationFrame(()=>r.classList.add('go'));
     setTimeout(()=>r.remove(), 950);
+    /* 错峰内环 */
+    const r2 = document.createElement('span');
+    r2.className = 'ripple d2';
+    if(big) r2.style.borderColor='#fff';
+    el.appendChild(r2);
+    setTimeout(()=>r2.classList.add('go'), 90);
+    setTimeout(()=>r2.remove(), 1000);
+    /* 中心闪光 */
+    const f = document.createElement('span');
+    f.className = 'flash';
+    el.appendChild(f);
+    setTimeout(()=>f.remove(), 520);
+    /* 迸射火星 */
+    const n = big ? 12 : 8;
+    for(let i=0;i<n;i++){
+      const a = Math.PI*2*i/n, d = 30 + (i%3)*8;
+      const sp = document.createElement('span');
+      sp.className = 'spark';
+      sp.style.setProperty('--sx', (Math.cos(a)*d)+'px');
+      sp.style.setProperty('--sy', (Math.sin(a)*d)+'px');
+      el.appendChild(sp);
+      setTimeout(()=>sp.remove(), 640);
+    }
   }
 
   /* ---------------- 数值弧 ---------------- */

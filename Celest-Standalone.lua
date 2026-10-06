@@ -395,11 +395,11 @@ function Celest._Cat:Toggle(name, default, cb)
 	return addItem(self, { kind = "toggle", name = name, value = default and true or false, cb = cb })
 end
 
--- onCb 可选：滑块星点按开 / 关时触发 onCb(on)；cb 仍只在调值时触发
-function Celest._Cat:Slider(name, min, max, default, cb, onCb)
+-- 纯数值滑块：单击选中，按住左右拖动调值（cb 只在调值时触发）
+function Celest._Cat:Slider(name, min, max, default, cb)
 	min, max = min or 0, max or 100
 	local d = default or min
-	return addItem(self, { kind = "slider", name = name, min = min, max = max, value = d, cb = cb, on = true, onCb = onCb })
+	return addItem(self, { kind = "slider", name = name, min = min, max = max, value = d, cb = cb })
 end
 
 function Celest._Cat:Button(name, cb)
@@ -711,7 +711,7 @@ function Celest:_build()
 			BackgroundTransparency = 1, Text = "", AutoButtonColor = false, ZIndex = 6,
 		})
 		local dot = circle(node, 9, T.star, 1); dot.ZIndex = 6
-		paintDot(dot, (item.kind == "toggle" and item.value) or (item.kind == "slider" and item.on) or false, false)
+		paintDot(dot, (item.kind == "toggle" and item.value) or false, false)
 
 		local label = mk("TextLabel", {
 			Parent = node, BackgroundTransparency = 1,
@@ -773,13 +773,48 @@ function Celest:_build()
 		local ox, oy = math.cos(math.rad(deg)) * r, math.sin(math.rad(deg)) * r
 		item._ui = { node = node, dot = dot, label = label, val = val, setT = setT, ox = ox, oy = oy }
 
-		local function ripple(bright)
-			local rr = circle(node, 9, bright and T.star or T.accent, 1)
-			stroke(rr, bright and T.star or T.accent, 1, .2); rr.ZIndex = 5
-			tw(rr, .9, { Size = UDim2.fromOffset(84, 84) }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+		-- 扩散光环：外层大环 + 错峰内环，亮时用星辰白、灭时用强调紫
+		local function ripple(bright, big)
+			local col = bright and T.star or T.accent
+			local rr = circle(node, 9, col, 1)
+			stroke(rr, col, 1, .18); rr.ZIndex = 5
+			local d1 = big and 1.05 or .9
+			tw(rr, d1, { Size = UDim2.fromOffset(big and 120 or 96, big and 120 or 96) }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
 			local s = rr:FindFirstChildOfClass("UIStroke")
-			if s then tw(s, .9, { Transparency = 1 }) end
-			task.delay(.95, function() if rr.Parent then rr:Destroy() end end)
+			if s then tw(s, d1, { Transparency = 1 }) end
+			task.delay(d1 + .05, function() if rr.Parent then rr:Destroy() end end)
+			task.delay(.1, function()
+				if not node.Parent then return end
+				local r2 = circle(node, 9, col, 1)
+				stroke(r2, col, 1, .4); r2.ZIndex = 5
+				tw(r2, .8, { Size = UDim2.fromOffset(big and 82 or 66, big and 82 or 66) }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+				local s2 = r2:FindFirstChildOfClass("UIStroke")
+				if s2 then tw(s2, .8, { Transparency = 1 }) end
+				task.delay(.85, function() if r2.Parent then r2:Destroy() end end)
+			end)
+		end
+
+		-- 中心闪光：一颗亮核向外炸开并淡出，给点击一个"着力点"
+		local function flash(col, size, tr)
+			local c = circle(node, 8, col, tr or .05)
+			c.ZIndex = 5
+			tw(c, .5, { Size = UDim2.fromOffset(size, size), BackgroundTransparency = 1 }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+			task.delay(.55, function() if c.Parent then c:Destroy() end end)
+		end
+
+		-- 迸射火星：一圈小光点向外飞散
+		local function sparks(n, spin)
+			for i = 1, n do
+				local a = math.rad(spin + (i - 1) * (360 / n))
+				local sp = circle(node, 3, T.star, .08)
+				sp.ZIndex = 5
+				local dist = 30 + (i % 3) * 8
+				tw(sp, .5 + (i % 2) * .12, {
+					Position = UDim2.new(.5, math.cos(a) * dist, .5, math.sin(a) * dist),
+					Size = UDim2.fromOffset(1, 1), BackgroundTransparency = 1,
+				}, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+				task.delay(.72, function() if sp.Parent then sp:Destroy() end end)
+			end
 		end
 
 		local function focus(on)
@@ -796,24 +831,34 @@ function Celest:_build()
 			if item.kind == "toggle" then
 				item.value = not item.value
 				paintDot(dot, item.value, false)
-				ripple(item.value)
+				if item.value then
+					-- 亮起：白核炸开 + 大光环 + 八向火星
+					flash(T.star, 42, 0)
+					ripple(true)
+					sparks(8, 0)
+				else
+					-- 熄灭：紫核收缩 + 小光环 + 少量火星
+					flash(T.accent, 26, .35)
+					ripple(false)
+					sparks(5, 26)
+				end
+				-- 文字短暂跳亮，强化"刚被点中"的反馈
+				tw(label, .12, { TextColor3 = T.star, TextTransparency = 0 })
+				task.delay(.18, function()
+					if label.Parent then tw(label, .5, { TextColor3 = T.dim, TextTransparency = .62 }) end
+				end)
 				self:_refreshTrail()
 				if item.cb then task.spawn(item.cb, item.value) end
 			elseif item.kind == "button" then
-				ripple(true)
+				-- 按钮：全白爆闪 + 双层光环 + 十二向火星，最"重"的一次点击
+				flash(T.star, 58, 0)
+				ripple(true, true)
+				sparks(12, 0)
 				if item.cb then task.spawn(item.cb) end
 			elseif item.kind == "dropdown" then
+				flash(T.accent, 30, .3)
 				ripple(false)
 				openDropdown(item, ox, oy)
-			elseif item.kind == "slider" then
-				-- 单击（未拖动）→ 像开关一样切换启用 / 停用；拖动仍由 setT 调值
-				if not self.dragMoved then
-					item.on = not item.on
-					paintDot(dot, item.on, false)
-					ripple(item.on)
-					self:_refreshTrail()
-					if item.onCb then task.spawn(item.onCb, item.on) end
-				end
 			end
 		end)
 		return node
@@ -873,6 +918,13 @@ function Celest:_build()
 				if self.active == i then return end
 				self.active = i
 				clearSelection()
+				-- 切分类时给一圈扩散脉冲，点击不再"无声无息"
+				local rr = circle(node, 6, T.accent, 1)
+				stroke(rr, T.accent, 1, .2); rr.ZIndex = 8
+				tw(rr, .72, { Size = UDim2.fromOffset(96, 96) }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+				local s = rr:FindFirstChildOfClass("UIStroke")
+				if s then tw(s, .72, { Transparency = 1 }) end
+				task.delay(.78, function() if rr.Parent then rr:Destroy() end end)
 				paintCats()
 				self:_renderOuter()
 			end)
