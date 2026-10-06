@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>星穹 Celest 使用教程 v1.3</title>
+<style>
+  :root{
+    --void:#05030a; --panel:#0b0818; --card:#100c20;
+    --line:rgba(169,139,255,.22); --line2:rgba(169,139,255,.10);
+    --accent:#b79dff; --accent2:#8a6bff; --star:#e9e6ff;
+    --dim:#a79fce; --dim2:#7d76a8; --ok:#7de3b0;
+    --mono:"JetBrains Mono","SFMono-Regular",Consolas,"Courier New",monospace;
+    --sans:"Noto Sans SC","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+    --serif:"Noto Serif SC","Songti SC",serif;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--void);color:var(--star);font-family:var(--sans);
+    line-height:1.85;font-size:15px;
+    background-image:
+      radial-gradient(60vmax 60vmax at 8% -6%, rgba(43,26,82,.55), transparent 60%),
+      radial-gradient(50vmax 50vmax at 100% 4%, rgba(20,29,84,.5), transparent 60%),
+      radial-gradient(60vmax 60vmax at 40% 108%, rgba(58,28,80,.45), transparent 62%);
+    background-attachment:fixed}
+  .wrap{max-width:900px;margin:0 auto;padding:56px 26px 100px}
+
+  header.top{border-bottom:1px solid var(--line);padding-bottom:26px;margin-bottom:34px}
+  .brand{font-family:var(--serif);font-size:34px;letter-spacing:.4em;margin:0 0 8px;
+    text-shadow:0 0 30px rgba(169,139,255,.5)}
+  .sub{font-size:11px;letter-spacing:.44em;color:var(--dim2);text-transform:uppercase}
+  .ver{display:inline-block;margin-top:14px;font-size:11px;letter-spacing:.2em;
+    color:var(--accent);border:1px solid var(--line);border-radius:999px;padding:4px 12px}
+  .lead{margin-top:16px;color:var(--dim)}
+
+  nav.toc{background:var(--panel);border:1px solid var(--line2);border-radius:14px;
+    padding:18px 22px;margin:26px 0 40px}
+  nav.toc b{display:block;font-size:12px;letter-spacing:.3em;color:var(--dim2);
+    margin-bottom:10px;font-weight:400}
+  nav.toc a{display:inline-block;color:var(--accent);text-decoration:none;
+    font-size:13px;margin:3px 16px 3px 0;letter-spacing:.05em}
+  nav.toc a:hover{color:#fff;text-shadow:0 0 14px rgba(169,139,255,.7)}
+
+  h2{font-family:var(--serif);font-size:22px;letter-spacing:.14em;margin:56px 0 16px;
+    padding-left:14px;border-left:3px solid var(--accent2)}
+  h3{font-size:16px;letter-spacing:.08em;margin:32px 0 10px;color:#d8d2ff}
+  h3 .tag{font-family:var(--mono);font-size:12px;color:var(--accent);
+    background:rgba(169,139,255,.12);border-radius:6px;padding:2px 8px;margin-right:8px}
+  p{margin:12px 0}
+  a{color:var(--accent)}
+  code{font-family:var(--mono);font-size:13px;background:rgba(169,139,255,.12);
+    border:1px solid var(--line2);border-radius:5px;padding:1px 6px;color:#dcd6ff}
+  pre{background:#08061160;border:1px solid var(--line);border-radius:12px;
+    padding:16px 18px;overflow:auto;margin:14px 0}
+  pre code{background:none;border:0;padding:0;font-size:13px;color:#e6e1ff;line-height:1.7}
+
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13.5px}
+  th,td{border:1px solid var(--line2);padding:9px 12px;text-align:left;vertical-align:top}
+  th{background:rgba(169,139,255,.10);color:#d8d2ff;font-weight:400;letter-spacing:.05em}
+  td code{font-size:12.5px}
+
+  .card{background:var(--card);border:1px solid var(--line2);border-radius:14px;
+    padding:4px 22px 18px;margin:18px 0}
+  .hl{border-color:rgba(169,139,255,.5);
+    box-shadow:0 0 0 1px rgba(169,139,255,.15),0 0 40px -12px rgba(169,139,255,.5)}
+  .note{border-left:3px solid var(--accent2);background:rgba(169,139,255,.07);
+    border-radius:0 10px 10px 0;padding:12px 18px;margin:16px 0;color:#cfc9f2}
+  .pill{display:inline-block;font-size:11px;letter-spacing:.16em;color:#05030a;
+    background:var(--accent);border-radius:999px;padding:2px 10px;margin-left:8px;vertical-align:middle}
+  .faq{border-bottom:1px dashed var(--line2);padding:14px 0}
+  .faq:last-child{border-bottom:0}
+  .faq b{color:#e3dfff;font-weight:400}
+  .ok{color:var(--ok)} .warn{color:#ffc98a}
+  footer{margin-top:70px;padding-top:22px;border-top:1px solid var(--line2);
+    color:var(--dim2);font-size:12px;letter-spacing:.1em;text-align:center}
+  ::selection{background:rgba(169,139,255,.35)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <div class="brand">星 穹</div>
+  <div class="sub">Celest · 无窗体星图 UI 库</div>
+  <div class="ver">v1.3 · 电脑 + 手机通用</div>
+  <p class="lead">不依赖任何 UI 库。<b>三级同心星环</b>：<b>第1环 = 主侧边栏</b>（大类）→ <b>第2环 = 副侧边栏</b>（子类，一个主栏可挂多个）→ <b>第3环起 = 功能星</b>；前两环都是分类，第三环才是功能。某副栏功能多则自动再向外多开几环。<br>
+  本版要点：<span class="ok">三级星环（主侧边栏 / 副侧边栏 / 功能）</span> · <span class="ok">开关点空白不再丢失</span> · 内置纯矢量图标（不依赖字体） · 下拉框 / 按钮 · 搜索支持键盘操作。</p>
+</header>
+
+<nav class="toc">
+  <b>目 录</b>
+  <a href="#s1">1 文件与加载</a>
+  <a href="#s2">2 快速开始</a>
+  <a href="#s3">3 交互方式</a>
+  <a href="#s4">4 初始化配置</a>
+  <a href="#s5">5 分类（主/副侧边栏）</a>
+  <a href="#s6">6 控件详解</a>
+  <a href="#s7">7 三级星环布局</a>
+  <a href="#s8">8 运行时 API</a>
+  <a href="#s9">9 主题</a>
+  <a href="#s10">10 完整示例</a>
+  <a href="#s11">11 常见问题</a>
+</nav>
+
+<h2 id="s1">1 · 文件说明与加载方式</h2>
+<table>
+  <tr><th>文件</th><th>作用</th></tr>
+  <tr><td><code>Celest.lua</code></td><td>纯 UI 库本体，末尾 <code>return Celest</code>，供其他脚本加载</td></tr>
+  <tr><td><code>Celest-Example.lua</code></td><td>完整注释示例，从远程加载库本体（推荐照着改）</td></tr>
+  <tr><td><code>Celest-Demo.lua</code></td><td>从远程加载库 + 演示界面，运行即可看到效果</td></tr>
+  <tr><td><code>Celest-Standalone.lua</code></td><td>独立单文件版：库本体内联，<b>粘进执行器即可运行，无需联网</b></td></tr>
+  <tr><td><code>celest-preview.html</code></td><td>浏览器里直接点着玩的交互预览（试开关、下拉、按钮、搜索手感）</td></tr>
+</table>
+
+<h3><span class="tag">A</span>远程加载库（推荐）</h3>
+<pre><code>local Celest = loadstring(game:HttpGet(
+	"https://raw.githubusercontent.com/LaPlua/Lua5.1/main/Celest.lua"))()</code></pre>
+
+<h3><span class="tag">B</span>本地文件</h3>
+<pre><code>local Celest = loadstring(readfile("Celest.lua"))()</code></pre>
+
+<h2 id="s2">2 · 快速开始（最小可运行示例）</h2>
+<pre><code>local Celest = loadstring(game:HttpGet(
+	"https://raw.githubusercontent.com/LaPlua/Lua5.1/main/Celest.lua"))()
+
+local win = Celest.new({
+	title    = "星 穹",
+	subtitle = "C E L E S T",
+})
+
+-- 第1环 · 主侧边栏（大类），glyph 用内置图标名，见第 5 节
+local combat = win:Category("兵戈", "sword")
+-- 第2环 · 副侧边栏（子类），一个主栏可挂多个
+local aim  = combat:Category("瞄准", "target")
+local arms = combat:Category("武备", "shield")
+
+-- 第3环起 · 功能星，挂在副栏上
+aim:Toggle("自动瞄准", false, function(on) print("自动瞄准", on) end)
+aim:Slider("视野半径", 0, 100, 50, function(v) print("半径", v) end)
+aim:Dropdown("瞄准部位", { "头部", "胸部" }, "头部", function(v) print("部位", v) end)
+arms:Button("执行一次", function() print("bang") end)</code></pre>
+<p>运行后：电脑按 <code>ALT</code> 呼出星图（再按归寂），手机点右下角常驻星点呼出。</p>
+
+<h2 id="s3">3 · 交互方式</h2>
+<table>
+  <tr><th>操作</th><th>电脑</th><th>手机</th></tr>
+  <tr><td>呼出星图</td><td>按 <code>ALT</code> 切换（再按归寂）；点右下角常驻星点也可</td><td>点右下角常驻星点（再点归寂）</td></tr>
+  <tr><td>关闭星图</td><td>再按 <code>ALT</code> / 按 <code>ESC</code> / 点右下角星点 —— <b>三种关法都不会动到任何开关状态</b></td><td>点右下角常驻星点</td></tr>
+  <tr><td>切换主侧边栏</td><td>点<b>第1环</b>的大类星点</td><td>同左</td></tr>
+  <tr><td>切换副侧边栏</td><td>点<b>第2环</b>的子类星点（切副栏后功能星随之更换）</td><td>同左</td></tr>
+  <tr><td>开关功能</td><td>点<b>第3环起</b>的功能星</td><td>同左</td></tr>
+  <tr><td>调数值</td><td>先单击选中数值星，再按住左右拖动</td><td>选中后按住左右拖</td></tr>
+  <tr><td><b>下拉选择</b></td><td>点下拉星展开列表 → 点其中一项</td><td>同左</td></tr>
+  <tr><td><b>一次执行</b></td><td>点带箭头的按钮星（点一下执行一次）</td><td>同左</td></tr>
+  <tr><td>搜索</td><td><code>CTRL</code> + <code>K</code> 打开「搜索」；或点左上「搜索」按钮</td><td>点左上「搜索」按钮</td></tr>
+  <tr><td>搜索面板内</td><td><code>↑</code> <code>↓</code>（或 <code>W</code> <code>S</code>）选择 · <code>Enter</code> 执行 · <code>ESC</code> 关闭</td><td>直接点结果</td></tr>
+  <tr><td>取消选中 / 收起下拉</td><td>点空白处；<b>不会关闭星图，也不会改变开关状态</b></td><td>点空白处</td></tr>
+</table>
+<div class="note">右上角「星痕」实时显示当前所有亮起的开关名，鼠标悬停可展开完整列表。<br>
+关于开关：状态存在该功能自己的 <code>item.value</code> 里，<b>只有点这颗功能星才会改变它</b>；点空白只做「取消选中」和「收起下拉」。</div>
+
+<h2 id="s4">4 · 初始化配置 <code>Celest.new</code></h2>
+<p><code>Celest.new(cfg)</code> 返回窗口对象，所有字段均可省略。</p>
+<table>
+  <tr><th>参数</th><th>类型</th><th>默认值</th><th>说明</th></tr>
+  <tr><td><code>title</code></td><td>string</td><td><code>"星 穹"</code></td><td>左上角标题</td></tr>
+  <tr><td><code>subtitle</code></td><td>string</td><td><code>"C E L E S T"</code></td><td>标题下方小字</td></tr>
+  <tr><td><code>hint</code></td><td>string</td><td>自动</td><td>左下角操作提示（不传按设备自动生成）</td></tr>
+  <tr><td><code>accent</code></td><td>Color3</td><td>冷紫</td><td>一键换强调色（同时作用于强调色、渐变尾色、描边色）</td></tr>
+  <tr><td><code>theme</code></td><td>table</td><td>—</td><td>覆盖主题任意字段，见第 9 节</td></tr>
+</table>
+<pre><code>local win = Celest.new({
+	title    = "星 穹",
+	subtitle = "C E L E S T   ·   示例",
+	accent   = Color3.fromRGB(120, 200, 255),   -- 冰蓝主题
+})</code></pre>
+
+<h2 id="s5">5 · 分类 Category（主侧边栏 / 副侧边栏）</h2>
+<p>Celest 的分类分两级，各占一圈星环，功能挂在第二级上：</p>
+<ul>
+  <li><code>win:Category(name, glyph)</code> —— 创建 <b>主侧边栏</b>（第1环 · 大类）；</li>
+  <li><code>主栏:Category(name, glyph)</code> —— 在该主栏下创建 <b>副侧边栏</b>（第2环 · 子类），<b>一个主栏可以挂多个副栏</b>；</li>
+  <li>功能控件（Toggle / Slider / Button / Dropdown）挂在 <b>副栏</b> 上，显示为 <b>功能星环（第3环起）</b>。</li>
+</ul>
+<table>
+  <tr><th>参数</th><th>类型</th><th>说明</th></tr>
+  <tr><td><code>name</code></td><td>string</td><td>名称（显示在所属星环的星点下方）</td></tr>
+  <tr><td><code>glyph</code></td><td>string</td><td>星点上的标记：传<b>内置图标名</b>则用矢量图标绘制；传其它字符则直接显示该字符。默认 <code>"✦"</code></td></tr>
+</table>
+<pre><code>-- 第1环 · 主侧边栏（大类）
+local combat = win:Category("兵戈", "sword")
+local visual = win:Category("观照", "eye")
+
+-- 第2环 · 副侧边栏（子类）：同一个主栏可挂多个副栏
+local aim  = combat:Category("瞄准", "target")
+local arms = combat:Category("武备", "shield")
+
+-- 第3环起 · 功能星，挂在副栏上
+aim:Toggle("自动瞄准", false, function(on) print(on) end)
+arms:Slider("平滑阻尼", 0, 100, 35, function(v) print(v) end)</code></pre>
+<div class="note">点第1环星点 → 切换主栏（副栏自动回到第一个）；点第2环星点 → 切换副栏，<b>第3环起的功能星随之整圈换成该副栏的功能</b>。<br>
+兼容写法：直接往主栏上挂控件（如 <code>combat:Toggle(...)</code>）也可以，Celest 会自动为该主栏建一个名为「常规」的副栏来接住这些功能。</div>
+<p><b>内置图标名一览</b>（运行时可用 <code>Celest.IconNames</code> 打印完整列表，<code>Celest.Icons</code> 取绘制函数）：</p>
+<pre><code>dot      sword    shield   eye      target   crosshair  bolt
+gear     layers   search   star     run      wave       list
+check    lock     power    plus     box      flag       home
+info     warn     sound    code     text     radar</code></pre>
+<p>图标全部由 <code>Frame</code> + <code>UIStroke</code> 现场绘制，不使用任何字体或图片资源。</p>
+
+<h2 id="s6">6 · 控件详解</h2>
+<p>所有控件挂在<b>副侧边栏对象</b>上，按调用顺序排布到该副栏的<b>功能星环（第3环起）</b>。</p>
+
+<div class="card">
+<h3><span class="tag">6.1</span>Toggle 开关</h3>
+<pre><code>local t = aim:Toggle("自动瞄准", false, function(on)
+	print("自动瞄准 ->", on)
+end)</code></pre>
+<table>
+  <tr><th>参数</th><th>类型</th><th>说明</th></tr>
+  <tr><td><code>name</code></td><td>string</td><td>功能名（星点下方文字）</td></tr>
+  <tr><td><code>default</code></td><td>boolean</td><td>初始状态，省略为 <code>false</code></td></tr>
+  <tr><td><code>cb</code></td><td>function</td><td><code>cb(on)</code>，点击切换时触发</td></tr>
+</table>
+<p>返回 item：<code>{ kind = "toggle", name, value, cb }</code>，用 <code>t.value</code> 读当前状态。</p>
+</div>
+
+<div class="card">
+<h3><span class="tag">6.2</span>Slider 数值</h3>
+<pre><code>local s = aim:Slider("视野半径", 0, 100, 50, function(v)
+	print("半径 ->", v)
+end)</code></pre>
+<table>
+  <tr><th>参数</th><th>类型</th><th>说明</th></tr>
+  <tr><td><code>name</code></td><td>string</td><td>功能名</td></tr>
+  <tr><td><code>min</code> / <code>max</code></td><td>number</td><td>范围，省略为 <code>0</code> / <code>100</code></td></tr>
+  <tr><td><code>default</code></td><td>number</td><td>初始值，省略取 <code>min</code></td></tr>
+  <tr><td><code>cb</code></td><td>function</td><td><code>cb(v)</code>，<b>拖动时实时触发</b></td></tr>
+</table>
+<p>返回 item：<code>{ kind = "slider", name, min, max, value, cb }</code>。<br>
+操作：先单击数值星选中，再按住左右拖动调值。</p>
+</div>
+
+<div class="card hl">
+<h3><span class="tag">6.3</span>Button 按钮<span class="pill">点一次就执行</span></h3>
+<pre><code>arms:Button("执行一次", function()
+	print("bang")
+end)</code></pre>
+<table>
+  <tr><th>参数</th><th>类型</th><th>说明</th></tr>
+  <tr><td><code>name</code></td><td>string</td><td>按钮名</td></tr>
+  <tr><td><code>cb</code></td><td>function</td><td>点击时触发一次</td></tr>
+</table>
+<p>返回 item：<code>{ kind = "button", name, cb }</code>。星点上带一个箭头标记，点一下执行一次。</p>
+</div>
+
+<div class="card hl">
+<h3><span class="tag">6.4</span>Dropdown 下拉框<span class="pill">新增</span></h3>
+<pre><code>local d = arms:Dropdown("作战模式", { "平衡", "激进", "潜行" }, "平衡", function(v)
+	print("作战模式 ->", v)
+end)</code></pre>
+<table>
+  <tr><th>参数</th><th>类型</th><th>说明</th></tr>
+  <tr><td><code>name</code></td><td>string</td><td>功能名</td></tr>
+  <tr><td><code>options</code></td><td>table</td><td>字符串数组，所有可选项</td></tr>
+  <tr><td><code>default</code></td><td>string</td><td>初始选中项；省略取 <code>options[1]</code></td></tr>
+  <tr><td><code>cb</code></td><td>function</td><td><code>cb(v)</code>，选中某一项时触发，<code>v</code> 为该项</td></tr>
+</table>
+<p>返回 item：<code>{ kind = "dropdown", name, options, value, cb }</code>，用 <code>d.value</code> 读当前选项。<br>
+操作：点该下拉星<b>展开列表</b>（列表靠近星点弹出并自动避让屏幕边缘）→ <b>点其中一项选中</b>；选中项左侧有高亮标记。点空白处即可收起列表。</p>
+</div>
+
+<h2 id="s7">7 · 三级星环布局</h2>
+<p>Celest 把「侧边栏」做成了<b>三级同心的星环</b>：前两环都是<b>分类</b>，第三环起才是<b>功能</b>。</p>
+<ul>
+  <li><b>主侧边栏（第1环）</b> —— 放<b>大类</b>星点，相当于一级菜单，负责「选哪个大类」；</li>
+  <li><b>副侧边栏（第2环）</b> —— 放<b>当前主栏下的子类</b>星点，相当于二级菜单。<b>一个主侧边栏可以挂多个副侧边栏</b>，切换主栏时整圈副栏随之换成该主栏的子类；</li>
+  <li><b>功能星环（第3环起）</b> —— 放<b>当前副栏的功能</b>星（开关 / 数值 / 下拉 / 按钮）。某个副栏的功能超过 <code>PER_RING = 8</code> 个时，会再向外自动多开一环（第4、5…环），<b>这些环仍然属于该副栏</b>。</li>
+</ul>
+<table>
+  <tr><th>常量</th><th>值</th><th>含义</th></tr>
+  <tr><td><code>PER_RING</code></td><td>8</td><td>每个功能星环最多放几个功能星</td></tr>
+  <tr><td><code>R_PRIMARY</code></td><td>130</td><td><b>主侧边栏</b>（第1环 · 大类）半径</td></tr>
+  <tr><td><code>R_SUB</code></td><td>226</td><td><b>副侧边栏</b>（第2环 · 子类）半径</td></tr>
+  <tr><td><code>R_FUNC</code></td><td>332</td><td><b>功能星环</b>（第3环 · 功能）首环半径</td></tr>
+  <tr><td><code>STEP_R</code></td><td>104</td><td>功能星各环之间的间距</td></tr>
+</table>
+<div class="note">术语对照：<br>
+第1环 = 主侧边栏 = 大类 = 一级菜单；<br>
+第2环 = 副侧边栏 = 子类 = 二级菜单（一个主栏可挂多个）；<br>
+第3环起 = 功能星环 = 挂在副栏下的具体功能。</div>
+<p>三级星环已整体向中心收拢，四周留白更大；星图整体按视口自动缩放（电脑 / 手机自适应），无需手动处理分辨率。</p>
+
+<h2 id="s8">8 · 运行时控制 API</h2>
+<table>
+  <tr><th>方法</th><th>说明</th></tr>
+  <tr><td><code>win:Open()</code></td><td>展开星图</td></tr>
+  <tr><td><code>win:Close()</code></td><td>收合星图（右下角常驻星点仍在）</td></tr>
+  <tr><td><code>win:Search(prefill)</code></td><td>打开「搜索」搜索面板，可预填关键字</td></tr>
+  <tr><td><code>win:Select(name)</code></td><td>按<b>主侧边栏</b>名切换（副侧边栏自动回到第一个）</td></tr>
+  <tr><td><code>win:Destroy()</code></td><td>销毁整个 UI 并断开连接</td></tr>
+</table>
+<pre><code>print(Celest.Version)                -- 版本号
+print(Celest.IconNames)              -- 全部内置图标名（数组）
+win:Select("观照")                    -- 切到主侧边栏「观照」（副栏回到第一个）
+win:Search("描边")                    -- 打开搜索并预填「描边」
+task.delay(3, function() win:Close() end)</code></pre>
+
+<h3><span class="tag">8.1</span>搜索面板</h3>
+<p>打开方式：<code>CTRL</code> + <code>K</code>，或点左上角「搜索」按钮；也可 <code>win:Search(prefill)</code> 预填关键字。</p>
+<ul>
+  <li><b>搜索范围</b>：全部主侧边栏 / 副侧边栏下所有功能名 + 主栏名 + 副栏名，输入即时过滤；</li>
+  <li><b>结果列表</b>：可滚动，每行左侧是类型图标，中间功能名，右侧「主侧边栏 / 副侧边栏 · 当前状态」（如「兵戈 / 瞄准 · 62 / 100」）；</li>
+  <li><b>键盘</b>：<code>↑</code> <code>↓</code>（或 <code>W</code> <code>S</code>）移动高亮，<code>Enter</code> 执行，<code>ESC</code> 关闭；也可鼠标点；</li>
+  <li><b>执行行为</b>：开关 → 就地切换并保持面板打开；按钮 → 立即执行一次；下拉 → 关闭面板并展开该下拉星；数值 → 关闭面板并选中该数值星，随后可拖动调值。</li>
+</ul>
+
+<h2 id="s9">9 · 主题自定义</h2>
+<p>主题字段可通过 <code>Celest.new({ theme = { ... } })</code> 覆盖。常用字段：</p>
+<table>
+  <tr><th>字段</th><th>说明</th></tr>
+  <tr><td><code>void</code></td><td>遮罩底色</td></tr>
+  <tr><td><code>panel</code></td><td>面板 / 星点底</td></tr>
+  <tr><td><code>nebA</code> <code>nebB</code> <code>nebC</code></td><td>星云三色</td></tr>
+  <tr><td><code>star</code></td><td>星辰白</td></tr>
+  <tr><td><code>accent</code> <code>accent2</code></td><td>强调色 / 渐变尾色</td></tr>
+  <tr><td><code>line</code></td><td>环线与描边色</td></tr>
+  <tr><td><code>dim</code></td><td>次级文字色</td></tr>
+</table>
+<pre><code>local win = Celest.new({
+	theme = {
+		accent = Color3.fromRGB(120, 200, 255),
+		line   = Color3.fromRGB(120, 200, 255),
+		star   = Color3.fromRGB(235, 245, 255),
+	},
+})</code></pre>
+<div class="note">只改强调色时，直接用 <code>accent = ...</code> 更省事，它会同时覆盖 <code>accent</code>、<code>accent2</code>、<code>line</code>。</div>
+
+<h2 id="s10">10 · 完整示例</h2>
+<p>见同目录 <code>Celest-Example.lua</code>，涵盖：</p>
+<ul>
+  <li>远程加载库 → 建窗 → <b>主侧边栏（大类）→ 副侧边栏（子类，一个主栏挂多个）→ 功能星</b>三级结构；</li>
+  <li>用矢量图标作星点标记；Toggle / Slider / Button / Dropdown 挂在副栏上；</li>
+  <li>某个副栏功能超过 8 个时自动多开环的写法；</li>
+  <li>运行时 <code>Select</code> / <code>Search</code> / <code>Close</code> 的调用。</li>
+</ul>
+
+<h2 id="s11">11 · 常见问题</h2>
+<div class="faq"><b>Q：关环后还有元素挡住游戏界面？</b><p>库已做分层处理：关环时「星场」「星云」「品牌/提示文字」「全屏拦截层」会一并隐藏，不再拦截点击。若仍被遮挡，检查是否有其它更高 <code>DisplayOrder</code> 的 ScreenGui。</p></div>
+<div class="faq"><b>Q：文字发虚 / 模糊？</b><p>星图容器使用普通 <code>Frame</code> + <code>UIScale</code>（非 CanvasGroup），文字为矢量渲染，缩放时保持清晰。</p></div>
+<div class="faq"><b>Q：手机点右下角没反应？</b><p>确认执行器 <code>UserInputService.TouchEnabled</code> 为真；星图会按触摸设备自动启用触屏拖动逻辑。</p></div>
+<div class="faq"><b>Q：想启动就展开星图？</b><p>建完界面后自行调用 <code>win:Open()</code>。</p></div>
+<div class="faq"><b>Q：数值星拖不动？</b><p>数值星需要<b>先单击选中</b>（星点变亮），再按住左右拖动；松手不移动仍视为一次选中。</p></div>
+<div class="faq"><b>Q：主侧边栏、副侧边栏、功能星分别在哪一环？</b><p>第1环 = <b>主侧边栏</b>（大类）；第2环 = <b>副侧边栏</b>（子类，<b>一个主栏可挂多个副栏</b>）；第3环起 = <b>功能星</b>。前两环都是<b>分类</b>，第三环起才是<b>功能</b>。</p></div>
+<div class="faq"><b>Q：副侧边栏是什么？和主侧边栏什么关系？</b><p>副侧边栏也是<b>分类</b>：主侧边栏是大类（一级菜单），副侧边栏是这个主栏下的子类（二级菜单）。一个主侧边栏可以挂多个副侧边栏，功能控件挂在副栏上、显示在<b>第3环起的功能星环</b>。点第1环切主栏、点第2环切副栏，功能星整圈随之更换。</p></div>
+<div class="faq"><b>Q：某一类功能太多挤在一起？</b><p>第1、2环按星点数量均分 360°，建议主栏 3 ~ 6 个、每主栏下副栏 2 ~ 6 个；单个副栏功能超过 8 个时会自动向外多开一环，仍属于该副栏。功能极多时也可用搜索（<code>CTRL + K</code>）直达。</p></div>
+<div class="faq"><b>Q：开关点开之后，点别的地方会不会被关掉？</b><p><span class="ok">不会。</span>开关状态只由点这颗功能星改变；点空白处仅取消选中 / 收起下拉，星图也不会因此关闭。<code>ALT</code> 也改成了切换式（按一次开、再按关）。</p></div>
+<div class="faq"><b>Q：那我想关掉菜单，怎么关才不会连功能一起关掉？</b><p>三种关法任选，都只关菜单、绝不碰开关状态：<b>再按一次 <code>ALT</code></b>、按 <b><code>ESC</code></b>、或点<b>右下角常驻星点</b>。</p></div>
+<div class="faq"><b>Q：图标显示成方框或乱码？</b><p>把 <code>Category</code> 的 <code>glyph</code> 换成<b>内置图标名</b>（如 <code>"sword"</code>、<code>"eye"</code>、<code>"gear"</code>）即可，图标全部由 <code>Frame</code> + <code>UIStroke</code> 绘制，不依赖系统字体。可用 <code>Celest.IconNames</code> 查看全部名称。</p></div>
+<div class="faq"><b>Q：怎么加下拉框和「点一次就执行」的按钮？</b>
+<pre><code>cat:Dropdown("作战模式", { "平衡", "激进", "潜行" }, "平衡", function(v) print(v) end)
+cat:Button("执行一次", function() print("bang") end)</code></pre>
+<p>下拉星点开列表选择；按钮星点一下执行一次。也可以在「搜索」搜索里直接搜到并执行。</p></div>
+<div class="faq"><b>Q：搜索好用吗？支持键盘吗？</b><p>支持。<code>CTRL + K</code> 打开后，<code>↑</code> <code>↓</code> 选择、<code>Enter</code> 执行、<code>ESC</code> 关闭；结果可滚动，并显示每项的类型与当前状态。详见 8.1。</p></div>
+<div class="faq"><b>Q：想彻底移除 UI？</b><p><code>win:Destroy()</code></p></div>
+
+<footer>星穹 CELEST · v1.3 · 三级同心星环（主侧边栏 / 副侧边栏 / 功能星），建窗与加控件即时生效，无需手动「提交」</footer>
+
+</div>
+</body>
+</html>
