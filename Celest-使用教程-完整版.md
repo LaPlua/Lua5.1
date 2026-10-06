@@ -1,0 +1,378 @@
+# 星穹 Celest · 使用教程（完整版）
+
+> 版本 `1.3.0` · 兼容 Lua 5.1 / Roblox Luau · 深空冷紫 · 无窗体星图 · 电脑 + 手机通用
+>
+> 本版要点：**数值星＝滑块＋开关二合一**、下拉框选中竖线不再压字、搜索入口图标与文字分离、主/副两环整体内收、内置纯矢量图标库、「搜索」面板支持键盘操作。
+
+---
+
+## 目录
+
+1. [文件说明与加载方式](#1-文件说明与加载方式)
+2. [快速开始](#2-快速开始)
+3. [交互方式](#3-交互方式)
+4. [初始化配置 `Celest.new`](#4-初始化配置-celestnew)
+5. [分类 `Category`](#5-分类-category)
+6. [控件详解](#6-控件详解)
+7. [星图布局与环](#7-星图布局与环)
+8. [运行时 API](#8-运行时-api)
+9. [搜索面板](#9-搜索面板)
+10. [主题自定义](#10-主题自定义)
+11. [完整示例](#11-完整示例)
+12. [常见问题](#12-常见问题)
+
+---
+
+## 1. 文件说明与加载方式
+
+| 文件 | 作用 |
+| --- | --- |
+| `Celest.lua` | 纯 UI 库本体，末尾 `return Celest`，供其它脚本加载 |
+| `Celest-Standalone.lua` | 独立单文件版：库本体内联，**粘进执行器即可运行，无需联网**（与 `Celest.lua` 同源） |
+| `Celest-Example.lua` | 带注释的完整示例（推荐照着改） |
+| `Celest-Demo.lua` | 远程加载库 + 演示界面，运行即可看到效果 |
+| `celest-preview.html` | 浏览器里直接点着玩的交互预览，不需要 Roblox，双击打开即可 |
+
+**方式 A · 远程加载（推荐）**
+
+```lua
+local Celest = loadstring(game:HttpGet(
+    "https://raw.githubusercontent.com/LaPlua/Lua5.1/main/Celest.lua?v=" .. tostring(os.time())
+))()
+```
+
+> 末尾的 `?v=时间戳` 用来绕过 GitHub raw 的 CDN 缓存，避免改了库却还跑到旧代码。
+
+**方式 B · 独立单文件**
+
+把 `Celest-Standalone.lua` 的全部内容直接粘进执行器运行即可，脚本自己会建出一个演示窗口。
+
+**方式 C · 本地文件**
+
+```lua
+local Celest = loadstring(readfile("Celest.lua"))()
+```
+
+---
+
+## 2. 快速开始
+
+```lua
+local Celest = loadstring(game:HttpGet(
+    "https://raw.githubusercontent.com/LaPlua/Lua5.1/main/Celest.lua?v=" .. tostring(os.time())
+))()
+
+local win = Celest.new({
+    title    = "星 穹",
+    subtitle = "C E L E S T",
+})
+
+local combat = win:Category("兵戈", "sword")     -- glyph 用内置图标名
+combat:Toggle("自动瞄准", false, function(on) print("自动瞄准", on) end)
+combat:Slider("视野半径", 0, 100, 50, function(v) print("半径", v) end)
+combat:Dropdown("作战模式", { "平衡", "激进" }, "平衡", function(v) print("模式", v) end)
+combat:Button("执行一次", function() print("bang") end)
+```
+
+运行后：**电脑**按 `ALT` 呼出星图（再按归寂）；**手机**点右下角常驻星点呼出。
+
+---
+
+## 3. 交互方式
+
+| 操作 | 电脑 | 手机 |
+| --- | --- | --- |
+| 呼出星图 | 按 `ALT` 切换（开 / 关）；或点右下角常驻星点 | 点右下角常驻星点（再点归寂） |
+| 关闭星图 | 再按 `ALT`、按 `ESC`、或点右下角星点 —— 三种都不动任何开关状态 | 点右下角常驻星点 |
+| 切换分类 | 点内环的类别星点 | 同左 |
+| 开关功能 | 点功能星 | 同左 |
+| 调数值 | 先单击选中数值星，再按住左右拖动 | 选中后按住左右拖 |
+| 数值星开关 | 单击数值星（不拖动）＝ 切换启用 / 停用 | 同左 |
+| 下拉选择 | 点下拉星展开列表 → 点其中一项 | 同左 |
+| 一次执行 | 点带箭头的按钮星，点一下执行一次 | 同左 |
+| 搜索 | `CTRL` + `K`；或点左上「搜索」按钮 | 点左上「搜索」按钮 |
+| 搜索面板内 | `↑` `↓`（或 `W` `S`）选择 · `Enter` 执行 · `ESC` 关闭 | 直接点结果 |
+| 取消选中 / 收起下拉 | 点空白处，**不会关星图，也不会改开关状态** | 点空白处 |
+
+右上角的「星痕」实时显示当前所有亮起的开关名，鼠标悬停可展开完整列表。
+
+> **开关状态很稳**：状态只存在功能自己的 `item.value` 里，只有点这颗功能星才会改变它。点空白只做「取消选中 / 收起下拉」，不会再出现「一不小心把开关关掉」。
+
+---
+
+## 4. 初始化配置 `Celest.new`
+
+`Celest.new(cfg)` 返回窗口对象，所有字段均可省略。
+
+| 参数 | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `title` | string | `"星 穹"` | 左上角标题 |
+| `subtitle` | string | `"C E L E S T"` | 标题下方小字 |
+| `hint` | string | 自动 | 左下角操作提示（不传按设备自动生成） |
+| `accent` | Color3 | 冷紫 | 一键换强调色（同时作用于强调色、渐变尾色、描边色） |
+| `theme` | table | — | 覆盖主题任意字段，见[第 10 节](#10-主题自定义) |
+
+```lua
+local win = Celest.new({
+    title    = "星 穹",
+    subtitle = "C E L E S T   ·   示例",
+    accent   = Color3.fromRGB(120, 200, 255),   -- 冰蓝主题
+})
+```
+
+---
+
+## 5. 分类 `Category`
+
+`win:Category(name, glyph)` 创建一个分类，返回值用来挂载控件。
+
+| 参数 | 类型 | 说明 |
+| --- | --- | --- |
+| `name` | string | 分类名（显示在内环类别星点附近） |
+| `glyph` | string | 类别星点上的标记：传**内置图标名**则绘制矢量图标；传其它字符则直接显示该字符。默认 `"✦"` |
+
+```lua
+-- 推荐用内置矢量图标（不依赖字体，任何执行器都不会出现方框 / 乱码）
+local combat = win:Category("兵戈", "sword")
+local visual = win:Category("观照", "eye")
+local move   = win:Category("行止", "run")
+local system = win:Category("律令", "gear")
+
+local misc = win:Category("杂项", "✦")   -- 也可以用任意字符
+```
+
+**内置图标名一览**（运行时用 `Celest.IconNames` 打印完整列表，`Celest.Icons` 取绘制函数）：
+
+```text
+dot      sword    shield   eye      target   crosshair  bolt
+gear     layers   search   star     run      wave       list
+check    lock     power    plus     box      flag       home
+info     warn     sound    code     text     radar
+```
+
+图标全部由 `Frame` + `UIStroke` 现场绘制，不使用任何字体或图片资源；其它控件也会自动引用（按钮星用 `run`、下拉星用箭头、搜索结果按类型显示 `dot` / `wave` / `list` / `run`）。
+
+- 一个分类对应**内环上的一个星点**；
+- 点类别星点即切到该分类，外环随之换成它的功能星；
+- 建议分类 3 ~ 6 个，内环会按数量均分 360°。
+
+---
+
+## 6. 控件详解
+
+所有控件挂在**分类对象**上，按调用顺序排布到外环。
+
+### 6.1 Toggle 开关
+
+```lua
+local t = combat:Toggle("自动瞄准", false, function(on)
+    print("自动瞄准 ->", on)
+end)
+```
+
+| 参数 | 类型 | 说明 |
+| --- | --- | --- |
+| `name` | string | 功能名（星点下方文字） |
+| `default` | boolean | 初始状态，省略为 `false` |
+| `cb` | function | `cb(on)`，点击切换时触发 |
+
+返回 item：`{ kind = "toggle", name, value, cb }`，用 `t.value` 读当前状态。
+
+### 6.2 Slider 数值（滑块 + 开关二合一）
+
+```lua
+local s = combat:Slider("视野半径", 0, 100, 50,
+    function(v)  print("半径 ->", v)   end,   -- 拖动调值
+    function(on) print("启用 ->", on)  end    -- 点按开关
+)
+```
+
+| 参数 | 类型 | 说明 |
+| --- | --- | --- |
+| `name` | string | 功能名 |
+| `min` / `max` | number | 范围，省略为 `0` / `100` |
+| `default` | number | 初始值，省略取 `min` |
+| `cb` | function | `cb(v)`，**拖动调值时实时触发** |
+| `onCb` | function | `cb(on)`，**点按（未拖动）切换启用 / 停用时触发**，可省略 |
+
+返回 item：`{ kind = "slider", name, min, max, value, cb, on = true, onCb }`。
+
+- `s.value` 读当前值；
+- `s.on` 读启用状态（默认 `true`）；
+- **单击 = 开 / 关**（触发 `onCb`），**按住拖动 = 调值**（触发 `cb`）。两者互不干扰：只要拖动过，这一次就不会被当成开 / 关。
+
+### 6.3 Button 按钮
+
+```lua
+combat:Button("执行一次", function()
+    print("bang")
+end)
+```
+
+| 参数 | 类型 | 说明 |
+| --- | --- | --- |
+| `name` | string | 按钮名 |
+| `cb` | function | 点击时触发一次 |
+
+返回 item：`{ kind = "button", name, cb }`。
+
+### 6.4 Dropdown 下拉框
+
+```lua
+local d = combat:Dropdown("作战模式", { "平衡", "激进", "潜行" }, "平衡", function(v)
+    print("作战模式 ->", v)
+end)
+```
+
+| 参数 | 类型 | 说明 |
+| --- | --- | --- |
+| `name` | string | 功能名 |
+| `options` | table | 字符串数组，所有可选项 |
+| `default` | string | 初始选中项；省略取 `options[1]` |
+| `cb` | function | `cb(v)`，选中某一项时触发 |
+
+返回 item：`{ kind = "dropdown", name, options, value, cb }`，用 `d.value` 读当前选项。
+
+操作：点下拉星展开列表（自动避让屏幕边缘）→ 点其中一项选中；**选中项左侧有竖线标记**，列表由布局器排布，标记与文字不会重叠。点空白处收起。
+
+---
+
+## 7. 星图布局与环
+
+- **内环（主环）** 固定放分类星点；
+- **第二层环（副环）** 放当前选中分类的功能星，每环最多 `PER_RING = 8` 个；
+- 某分类功能星超过 8 个时**自动多开一环**（再往外是第 3、4… 环）；
+
+| 常量 | 值 | 含义 |
+| --- | --- | --- |
+| `PER_RING` | 8 | 每环最多放几个功能星 |
+| `R_IN` | 136 | 内环（分类＝主环）半径 |
+| `R_FIRST` | 248 | 第二层环（功能＝副环）半径 |
+| `STEP_R` | 106 | 外环之间的间距 |
+
+- 主 / 副两环已整体向中心收拢，四周留白更大；星图整体仍按视口自动缩放（电脑 / 手机自适应），无需手动处理分辨率。
+
+---
+
+## 8. 运行时 API
+
+| 方法 | 说明 |
+| --- | --- |
+| `win:Open()` | 展开星图 |
+| `win:Close()` | 收合星图（右下角常驻星点仍在） |
+| `win:Search(prefill)` | 打开搜索面板，可预填关键字 |
+| `win:Select(name)` | 按分类名切换当前分类 |
+| `win:Destroy()` | 销毁整个 UI 并断开连接 |
+
+```lua
+print(Celest.Version)      -- 版本号，如 "1.3.0"
+print(Celest.IconNames)    -- 全部内置图标名（数组，可遍历）
+win:Select("观照")          -- 切到「观照」分类
+win:Search("描边")          -- 打开搜索并预填「描边」
+task.delay(3, function() win:Close() end)
+```
+
+---
+
+## 9. 搜索面板
+
+打开方式：`CTRL` + `K`，或点左上角「搜索」按钮；也可 `win:Search(prefill)` 预填关键字。
+
+- **搜索范围**：全部分类的所有功能名 + 分类名，输入即时过滤；
+- **结果列表**：可滚动。每行左侧是类型图标，中间是功能名，右侧显示「所属分类 · 当前状态」（如「已亮 / 已灭」「62 / 100」「平衡」「点击执行」）；
+- **键盘操作**：`↑` `↓`（或 `W` `S`）移动高亮，`Enter` 执行，`ESC` 关闭；也可直接鼠标点某一行；
+- **执行行为**：
+  - 开关 → 就地切换，面板保持打开、状态实时刷新；
+  - 按钮 → 立即执行一次；
+  - 下拉 → 关闭面板并展开该下拉星；
+  - 数值 → 关闭面板并选中该数值星，随后可拖动调值。
+
+---
+
+## 10. 主题自定义
+
+主题字段可通过 `Celest.new({ theme = { ... } })` 覆盖。
+
+| 字段 | 说明 |
+| --- | --- |
+| `void` | 遮罩底色 |
+| `panel` | 面板 / 星点底 |
+| `nebA` `nebB` `nebC` | 星云三色 |
+| `star` | 星辰白 |
+| `accent` `accent2` | 强调色 / 渐变尾色 |
+| `line` | 环线与描边色 |
+| `dim` | 次级文字色 |
+
+```lua
+local win = Celest.new({
+    theme = {
+        accent = Color3.fromRGB(120, 200, 255),
+        line   = Color3.fromRGB(120, 200, 255),
+        star   = Color3.fromRGB(235, 245, 255),
+    },
+})
+```
+
+> 只改强调色时，直接用 `accent = ...` 更省事，它会同时覆盖 `accent`、`accent2`、`line`。
+
+---
+
+## 11. 完整示例
+
+见同目录 [`Celest-Example.lua`](Celest-Example.lua)，涵盖：
+
+- 远程加载库 → 建窗 → 四个分类（矢量图标作类别标记）→ Toggle / Slider / Button / Dropdown；
+- 每类功能超过 8 个时自动多开环的写法；
+- `onCb` 用法（数值星兼作开关）；
+- 运行时 `Select` / `Search` / `Close` 的调用。
+
+---
+
+## 12. 常见问题
+
+**Q：关环后还有元素挡住游戏界面？**
+库已做分层处理：关环时星场、星云、品牌 / 提示文字、全屏拦截层会一并隐藏，不再拦截点击。若仍被遮挡，检查是否有其它更高 `DisplayOrder` 的 ScreenGui。
+
+**Q：文字发虚 / 模糊？**
+星图容器使用普通 `Frame` + `UIScale`（非 CanvasGroup），文字为矢量渲染，缩放时保持清晰。
+
+**Q：手机点右下角没反应？**
+确认执行器 `UserInputService.TouchEnabled` 为真；星图会按触摸设备自动启用触屏拖动逻辑。
+
+**Q：想启动就展开星图？**
+Celest 没有 `StartOpen` 开关，建完界面后自行调用：
+
+```lua
+win:Open()
+```
+
+**Q：数值星拖不动？**
+数值星要先**单击选中**（星点变亮），再按住左右拖动；松手不移动仍视为一次选中。注意：**单击＝开关，拖动＝调值**，两者不会互相干扰。
+
+**Q：下拉框选中项左边的竖线会不会压到字？**
+不会。选项行用横向布局管理器排布「竖线标记 + 文字」，间距由布局器固定，不再用手写坐标，因此任何字号 / 字体下都不会重叠。
+
+**Q：分类太多挤在一起？**
+内环按分类数量均分 360°，建议控制在 3 ~ 6 个；过多可拆成多层或改用搜索（`CTRL + K`）。
+
+**Q：开关点开之后，点别的地方会不会被关掉？**
+不会。开关状态只由点这颗功能星改变；点空白仅取消选中 / 收起下拉，星图也不会因此关闭。`ALT` 是切换式（按一次开、再按关）。
+
+**Q：想关掉菜单，怎么关才不会连功能一起关掉？**
+三种关法任选，都只关菜单、绝不碰开关状态：**再按一次 `ALT`**、按 **`ESC`**、或点**右下角常驻星点**。
+
+**Q：图标显示成方框或乱码？**
+把 `Category` 的 `glyph` 换成**内置图标名**（如 `"sword"`、`"eye"`、`"gear"`）即可。图标全部由 `Frame` + `UIStroke` 绘制，不依赖系统字体。可用 `Celest.IconNames` 查看全部名称。
+
+**Q：改了库，运行却还是旧样子？**
+多半是 GitHub raw 的 CDN 缓存。给加载地址加 `?v=时间戳`（见[第 1 节](#1-文件说明与加载方式)）即可强制拿最新版；独立单文件版则需重新复制新内容。
+
+**Q：想彻底移除 UI？**
+
+```lua
+win:Destroy()
+```
+
+---
+
+> 本库为「数据层 + 星图 UI」两层结构，建窗与加控件即时生效，不需要手动「提交」。对照第 5、6 节的参数表即可上手。
