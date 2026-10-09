@@ -1,0 +1,13 @@
+./run.luau:145: invalid argument #1 to 'floor' (number expected, got table)
+stacktrace:
+[C] function floor
+./run.luau:145
+./run.luau:145
+./run.luau:145
+./run.luau:145
+./run.luau:145
+./run.luau:145
+./run.luau:145
+./run.luau:145
+./run.luau:145 function __chunk
+./run.luau:148

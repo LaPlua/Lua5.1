@@ -1,0 +1,12 @@
+./run_v5.luau:16783: attempt to get length of a nil value
+stacktrace:
+./run_v5.luau:16783 function ln
+./run_v5.luau:16783
+./run_v5.luau:16783
+./run_v5.luau:16783
+./run_v5.luau:16783
+./run_v5.luau:16783
+./run_v5.luau:16783
+./run_v5.luau:16783
+./run_v5.luau:16783 function __chunk
+./run_v5.luau:16786

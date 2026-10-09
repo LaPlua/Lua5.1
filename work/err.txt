@@ -1,0 +1,11 @@
+./run.luau:112: attempt to call a nil value
+stacktrace:
+./run.luau:112
+./run.luau:112
+./run.luau:112
+./run.luau:112
+./run.luau:112
+./run.luau:112
+./run.luau:112
+./run.luau:112 function __chunk
+./run.luau:115

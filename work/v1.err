@@ -1,0 +1,13 @@
+attempt to index a nil value
+stacktrace:
+[C] function error
+./run_v1.luau:154 function ln
+./run_v1.luau:154
+./run_v1.luau:154
+./run_v1.luau:154
+./run_v1.luau:154
+./run_v1.luau:154
+./run_v1.luau:154
+./run_v1.luau:154
+./run_v1.luau:154 function __chunk
+./run_v1.luau:157
